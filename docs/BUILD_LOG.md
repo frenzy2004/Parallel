@@ -19,6 +19,7 @@ This file records failures, root causes, fixes, and fresh evidence so later work
 |---|---|---|---|---|
 | Fixed | Electron initially threw `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`. | The runtime resolved workspace TypeScript instead of a bundled main process. | Bundle main/preload with esbuild into ignored generated output. | Actual Electron main-process probe passes. |
 | Fixed | `better-sqlite3` could load in Node tests but fail in Electron. | Node and Electron use different native ABIs. | Build an ignored Electron-specific binding, pass it explicitly to both local stores, and restore the Node binding after build. | Runtime probe opens both SQLite stores and reports `sqlite_native_load=passed`. |
+| Fixed | The native probe could report success without proving Electron or either SQLite store became ready. | It slept before attaching an exit listener, ignored exit status, and treated the absence of a blacklist regex as success. | Attach process lifecycle listeners immediately; reject early, nonzero, and timed-out exits; accept one exact sentinel emitted only after both stores execute a live query. | Controlled child-process tests cover exact readiness, clean early exit, nonzero exit, silence, and lookalike output; real store tests prove readiness hits an open database; the rebuilt app passes the exact-sentinel native probe. |
 | Fixed | Generated `dist-electron` output was tracked. | Initial build output was committed before the ignore rule. | Remove generated binaries and ignore `dist-electron/` and the native binding. | Source tree remains clean after build. |
 | Pending user acceptance | Computer Use could launch Electron but could not inspect or drive it. PARALLEL also lacked Screen Recording permission. | macOS Accessibility/Screen Recording grants were unavailable in this session. | User explicitly chose to skip Computer Use and perform the final hands-on overlay check. Automated native launch remains mandatory. | No claim of a Computer Use interaction test is made. |
 | Fixed | `Option+Space` showed a blocking Screen Recording warning when access was not granted. | The product treated full-screen lasso as the only capture path, making a broad macOS permission feel mandatory. | Keep lasso for granted users; otherwise open a compact paste/drop/choose import view. Bind the optional Settings action to the active import window’s exact trusted document, reuse bounded crop validation, and keep bytes only in the active generation lease. | 84/84 desktop tests pass, including import UX/file/geometry and hostile IPC URL cases; desktop typecheck and production build pass. |
@@ -47,4 +48,7 @@ This file records failures, root causes, fixes, and fresh evidence so later work
 - Privacy-first capture branch: 125/125 tests, all workspace typechecks,
   production build, 100-case evaluator, privacy scan, and native probe passed
   before integration.
+- Native-probe truth branch: 139/139 tests, all workspace typechecks,
+  production build, controlled negative lifecycle fixtures, and the real
+  exact-sentinel Electron/SQLite probe passed.
 - Final verification remains required after the privacy-first screenshot fallback is added.

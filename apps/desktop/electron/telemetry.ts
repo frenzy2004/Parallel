@@ -56,6 +56,15 @@ export class TelemetryStore {
       );
   }
 
+  assertReady(): void {
+    const result = this.database
+      .prepare("SELECT 1 AS ready")
+      .get() as { ready?: unknown } | undefined;
+    if (result?.ready !== 1) {
+      throw new Error("Telemetry store readiness query failed.");
+    }
+  }
+
   close(): void {
     this.database.close();
   }
