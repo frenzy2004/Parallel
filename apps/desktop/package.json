@@ -1,0 +1,34 @@
+{
+  "name": "@parallel/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "pretest": "pnpm -w build:shared",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p electron/tsconfig.json",
+    "prebuild": "pnpm -w build:shared",
+    "build": "vite build && esbuild electron/main.ts --bundle --platform=node --format=esm --target=node22 --external:electron --external:better-sqlite3 --outfile=dist-electron/main.js --sourcemap && esbuild electron/preload.ts --bundle --platform=node --format=cjs --target=node22 --external:electron --outfile=dist-electron/preload.cjs --sourcemap && node ../../scripts/rebuild-electron-native.mjs"
+  },
+  "dependencies": {
+    "@parallel/contracts": "workspace:*",
+    "@parallel/twin-engine": "workspace:*",
+    "better-sqlite3": "^12.2.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@electron/rebuild": "^4.0.3",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^43.2.0",
+    "esbuild": "^0.25.8",
+    "jsdom": "^26.1.0",
+    "vite": "^7.0.5"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "parallel-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:shared": "pnpm --filter @parallel/contracts build && pnpm --filter @parallel/statics-patterns build && pnpm --filter @parallel/twin-engine build",
+    "pretest": "pnpm run build:shared",
+    "test": "vitest run",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "build": "pnpm -r --if-present build",
+    "demo": "pnpm run build:shared && pnpm --filter @parallel/desktop build && node scripts/run-demo.mjs",
+    "dev:web": "pnpm --filter @parallel/web dev",
+    "evaluate": "tsx scripts/evaluate-gold.mjs",
+    "verify": "tsx scripts/verify-privacy.mjs",
+    "smoke:live": "tsx scripts/smoke-live.mjs"
+  },
+  "devDependencies": {
+    "@parallel/api": "workspace:*",
+    "@parallel/contracts": "workspace:*",
+    "@parallel/statics-patterns": "workspace:*",
+    "@parallel/twin-engine": "workspace:*",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.23.1",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

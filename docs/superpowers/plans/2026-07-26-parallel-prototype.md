@@ -4,7 +4,7 @@
 
 **Goal:** Build a macOS Electron prototype where `Option+Space` opens a crop-only lasso and a sidecar returns a mapped, worked 2D Statics twin without revealing the original answer.
 
-**Architecture:** An npm workspace separates Electron shell, local API, shared Zod contracts, validated Statics patterns, and provider adapters. The renderer owns layout; providers return strict data. Deterministic demo mode is the default, while OpenAI Responses API and Exa adapters activate only when server-side credentials exist.
+**Architecture:** A pnpm workspace separates Electron shell, local API, shared Zod contracts, validated Statics patterns, and provider adapters. The renderer owns layout; providers return strict data. Deterministic demo mode is the default, while OpenAI Responses API and Exa adapters activate only when server-side credentials exist.
 
 **Tech Stack:** Node.js 22+, TypeScript 5, Electron, React, Vite, Vitest, Zod, OpenAI Node SDK, Exa REST API, Hono, Server-Sent Events, better-sqlite3
 
@@ -51,17 +51,17 @@ it("rejects answer leakage and missing mapping anchors", () => {
 
 - [ ] **Step 2: Run the focused test and confirm red**
 
-Run: `npm test -- packages/contracts/src/twin.test.ts`
+Run: `pnpm test -- packages/contracts/src/twin.test.ts`
 
 Expected: FAIL because `TwinRenderSchema` is not exported.
 
-- [ ] **Step 3: Add the npm workspace and strict Zod contracts**
+- [ ] **Step 3: Add the pnpm workspace and strict Zod contracts**
 
 Implement exact discriminated states `reading | recognized | twin_step | complete | recapture | unsupported | error`; constrain confidence to `0..1`; reject `answerLeak: true`; require at least one mapping edge for a successful render.
 
 - [ ] **Step 4: Run contract tests and typecheck**
 
-Run: `npm test -- packages/contracts/src/twin.test.ts && npm run typecheck`
+Run: `pnpm test -- packages/contracts/src/twin.test.ts && pnpm typecheck`
 
 Expected: PASS.
 
@@ -99,7 +99,7 @@ it("changes surface details but preserves moment-equilibrium structure", () => {
 
 - [ ] **Step 2: Run the test and confirm red**
 
-Run: `npm test -- packages/statics-patterns/src/compiler.test.ts`
+Run: `pnpm test -- packages/statics-patterns/src/compiler.test.ts`
 
 Expected: FAIL because the registry does not exist.
 
@@ -109,7 +109,7 @@ Implement `concurrent_force_equilibrium`, `resultant_coplanar_forces`, `moment_a
 
 - [ ] **Step 4: Run pattern tests**
 
-Run: `npm test -- packages/statics-patterns`
+Run: `pnpm test -- packages/statics-patterns`
 
 Expected: PASS for schema validity, deterministic seeds, surface variation, and no original-answer field.
 
@@ -147,7 +147,7 @@ it("sends Exa only the abstract query", async () => {
 
 - [ ] **Step 2: Run the tests and confirm red**
 
-Run: `npm test -- packages/twin-engine/src/providers/providers.test.ts`
+Run: `pnpm test -- packages/twin-engine/src/providers/providers.test.ts`
 
 Expected: FAIL because provider modules are missing.
 
@@ -157,7 +157,7 @@ Use `openai.responses.parse` with base64 `input_image`, `zodTextFormat`, `store:
 
 - [ ] **Step 4: Run provider tests and mock integration**
 
-Run: `npm test -- packages/twin-engine`
+Run: `pnpm test -- packages/twin-engine`
 
 Expected: PASS without network or credentials.
 
@@ -190,7 +190,7 @@ Test unsupported MIME rejection, 8 MB crop cap, ordered SSE states, and a stream
 
 - [ ] **Step 2: Run the API tests and confirm red**
 
-Run: `npm test -- apps/api/src/app.test.ts`
+Run: `pnpm test -- apps/api/src/app.test.ts`
 
 Expected: FAIL because `createApp` is missing.
 
@@ -200,7 +200,7 @@ Keep crop bytes in request memory only, stream `reading → recognized → twin_
 
 - [ ] **Step 4: Run API tests**
 
-Run: `npm test -- apps/api`
+Run: `pnpm test -- apps/api`
 
 Expected: PASS.
 
@@ -235,7 +235,7 @@ Assert the sidecar chooses right, left, then below without covering the lasso; a
 
 - [ ] **Step 2: Run focused desktop tests and confirm red**
 
-Run: `npm test -- apps/desktop`
+Run: `pnpm test -- apps/desktop`
 
 Expected: FAIL because components and placement logic are absent.
 
@@ -245,7 +245,7 @@ Register `Alt+Space`, request screen-recording access, capture only after explic
 
 - [ ] **Step 4: Run desktop tests and renderer build**
 
-Run: `npm test -- apps/desktop && npm run build -w @parallel/desktop`
+Run: `pnpm test -- apps/desktop && pnpm --filter @parallel/desktop build`
 
 Expected: PASS.
 
@@ -271,7 +271,7 @@ git commit -m "feat: build PARALLEL overlay interaction"
 
 **Interfaces:**
 - Consumes: confirmed `StructuralSignature`, `TwinRender`, and outcome.
-- Produces: `savePrecedent`, `matchPrecedent`, local outcome events, `npm run demo`, and `npm run verify`.
+- Produces: `savePrecedent`, `matchPrecedent`, local outcome events, `pnpm demo`, and `pnpm verify`.
 
 - [ ] **Step 1: Write red precedent and privacy tests**
 
@@ -279,19 +279,19 @@ Assert screenshot bytes and raw OCR never enter SQLite; require a match threshol
 
 - [ ] **Step 2: Run the tests and confirm red**
 
-Run: `npm test -- apps/desktop/electron/precedents.test.ts`
+Run: `pnpm test -- apps/desktop/electron/precedents.test.ts`
 
 Expected: FAIL because persistence is missing.
 
 - [ ] **Step 3: Implement local storage and the sample journey**
 
-Create SQLite tables for abstract precedents and outcome events, add a bundled Statics problem, and make `npm run demo` open the sample before the overlay shortcut is used.
+Create SQLite tables for abstract precedents and outcome events, add a bundled Statics problem, and make `pnpm demo` open the sample before the overlay shortcut is used.
 
-Populate 100 deterministic known-structure cases across the six patterns and make `npm run evaluate` report schema validity, structural-pattern fidelity, confidently wrong rate, answer leakage, and latency separately. Label this a synthetic preflight; the GTM protocol remains responsible for TA review.
+Populate 100 deterministic known-structure cases across the six patterns and make `pnpm evaluate` report schema validity, structural-pattern fidelity, confidently wrong rate, answer leakage, and latency separately. Label this a synthetic preflight; the GTM protocol remains responsible for TA review.
 
 - [ ] **Step 4: Verify the entire prototype**
 
-Run: `npm test && npm run typecheck && npm run build && npm run evaluate && npm run verify`
+Run: `pnpm test && pnpm typecheck && pnpm build && pnpm evaluate && pnpm verify`
 
 Expected: all tests pass; privacy scan reports zero prohibited fields; packaged renderer and Electron main compile.
 

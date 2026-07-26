@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PARALLEL Demo — 2D Statics</title>
+    <style>
+      :root {
+        color: #132238;
+        background: #edf1f6;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        place-items: center;
+      }
+      .page {
+        width: min(860px, calc(100vw - 72px));
+        padding: 54px 62px;
+        border: 1px solid #ccd3dc;
+        background: #fff;
+        box-shadow: 0 24px 70px #21334a24;
+      }
+      .chapter {
+        color: #6a7482;
+        font-family: system-ui, sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 8px 0 28px;
+        font-size: 31px;
+      }
+      .problem {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 42px;
+        align-items: center;
+      }
+      p {
+        font-size: 20px;
+        line-height: 1.55;
+      }
+      .given {
+        padding: 16px 18px;
+        border-left: 4px solid #2e708e;
+        background: #f3f7fa;
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+        line-height: 1.7;
+      }
+      .hint {
+        position: fixed;
+        right: 22px;
+        bottom: 22px;
+        padding: 11px 15px;
+        border-radius: 999px;
+        color: #dffcef;
+        background: #132238;
+        font-family: system-ui, sans-serif;
+        font-size: 13px;
+        box-shadow: 0 10px 28px #13223844;
+      }
+      kbd {
+        border: 1px solid #667589;
+        border-radius: 5px;
+        padding: 2px 6px;
+        background: #24364d;
+      }
+    </style>
+  </head>
+  <body>
+    <article class="page">
+      <div class="chapter">Engineering Mechanics · Statics · Practice 4.2</div>
+      <h1>Moment of a force about a point</h1>
+      <div class="problem">
+        <div>
+          <p>
+            A downward force of 140 N is applied at the end of the horizontal
+            bracket. Determine the moment of the force about <strong>Point A</strong>.
+            State the direction using the course sign convention.
+          </p>
+          <div class="given">
+            Given: bracket length = 2.4 m<br />
+            Convention: counter-clockwise positive<br />
+            Ignore the bracket’s weight.
+          </div>
+        </div>
+        <svg
+          viewBox="0 0 390 300"
+          role="img"
+          aria-label="Horizontal bracket pinned at Point A with downward force at the right end"
+        >
+          <defs>
+            <marker
+              id="arrow"
+              markerWidth="10"
+              markerHeight="10"
+              refX="5"
+              refY="5"
+              orient="auto"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="#b23a48" />
+            </marker>
+          </defs>
+          <rect x="34" y="72" width="26" height="150" fill="#9ba9b8" />
+          <path
+            d="M34 86 l-18 14 M34 110 l-18 14 M34 134 l-18 14 M34 158 l-18 14 M34 182 l-18 14"
+            stroke="#657587"
+            stroke-width="3"
+          />
+          <circle cx="72" cy="146" r="10" fill="#fff" stroke="#1b3b57" stroke-width="4" />
+          <text x="57" y="178" font-size="18" font-family="system-ui">Point A</text>
+          <rect x="78" y="138" width="250" height="16" rx="3" fill="#2e708e" />
+          <line
+            x1="322"
+            y1="70"
+            x2="322"
+            y2="126"
+            stroke="#b23a48"
+            stroke-width="5"
+            marker-end="url(#arrow)"
+          />
+          <text x="276" y="52" font-size="19" font-family="system-ui" fill="#8f2633">
+            140 N
+          </text>
+          <line x1="78" y1="220" x2="328" y2="220" stroke="#53687b" stroke-width="2" />
+          <line x1="78" y1="208" x2="78" y2="232" stroke="#53687b" stroke-width="2" />
+          <line x1="328" y1="208" x2="328" y2="232" stroke="#53687b" stroke-width="2" />
+          <text x="180" y="250" font-size="18" font-family="system-ui">2.4 m</text>
+        </svg>
+      </div>
+    </article>
+    <div class="hint"><kbd>⌥</kbd> + <kbd>Space</kbd> then lasso the problem</div>
+  </body>
+</html>
