@@ -1,0 +1,23 @@
+{
+  "name": "@parallel/twin-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/engine.ts",
+    "./providers": "./src/providers/types.ts",
+    "./providers/openai": "./src/providers/openai.ts",
+    "./providers/exa": "./src/providers/exa.ts",
+    "./providers/demo": "./src/providers/demo.ts"
+  },
+  "scripts": {
+    "test": "vitest run src",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@parallel/contracts": "0.1.0",
+    "@parallel/statics-patterns": "0.1.0",
+    "openai": "^5.22.0",
+    "zod": "^3.24.1"
+  }
+}

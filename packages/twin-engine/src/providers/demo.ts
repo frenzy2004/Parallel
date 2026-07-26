@@ -1,0 +1,57 @@
+import {
+  StructuralSignatureSchema,
+  TwinRenderSchema,
+  type SourceRef,
+  type StructuralSignature,
+  type TwinRender,
+} from "@parallel/contracts";
+import { compileVerifiedTwin } from "@parallel/statics-patterns";
+import type {
+  CompilerProvider,
+  EvidenceProvider,
+  StructureProvider,
+} from "./types.js";
+
+export class DemoStructureProvider implements StructureProvider {
+  async parseStructure(): Promise<StructuralSignature> {
+    return StructuralSignatureSchema.parse({
+      domain: "statics_2d",
+      patternId: "moment_about_point",
+      entities: ["applied force", "moment center", "perpendicular distance"],
+      relationships: ["force line of action is offset from the moment center"],
+      constraints: ["counter-clockwise moments are positive"],
+      goal: "determine the signed moment about the selected point",
+      invariant: "moment equals force times perpendicular distance",
+      courseConvention: "counter-clockwise positive",
+      missingContext: [],
+      confidence: 0.97,
+      exaQuery:
+        "introductory 2D statics worked example moment about point counter-clockwise positive",
+    });
+  }
+}
+
+export class DemoEvidenceProvider implements EvidenceProvider {
+  async search(): Promise<SourceRef[]> {
+    return [
+      {
+        title: "Engineering Statics — Moments",
+        url: "https://engineeringstatics.org/Chapter_04-moments.html",
+        highlight: "A force moment measures rotational tendency about a point.",
+      },
+    ];
+  }
+}
+
+export class DemoCompilerProvider implements CompilerProvider {
+  async compileTwin(
+    signature: StructuralSignature,
+    evidence: SourceRef[],
+    seed: number,
+  ): Promise<TwinRender> {
+    return TwinRenderSchema.parse({
+      ...compileVerifiedTwin(signature, seed),
+      sourceRefs: evidence,
+    });
+  }
+}

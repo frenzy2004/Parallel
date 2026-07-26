@@ -25,3 +25,12 @@ Worktree: `.worktrees/prototype`
 - Added six bounded pattern definitions, deterministic surface/worked-step generators, mapping anchors, and a fail-closed compiler.
 - GREEN: `npm test -- packages/statics-patterns && npm run typecheck`
   - 4 compiler/registry tests passed across all six patterns; workspace typecheck passed.
+
+## Task 3 — Privacy-safe OpenAI and Exa adapters
+
+- RED: `npm test -- packages/twin-engine/src/providers/providers.test.ts`
+  - Failed as expected because `../engine.js` did not exist.
+- Added Responses API parse/compile adapters with strict Zod formats, image input, `store: false`, low reasoning, and configurable luna/terra models.
+- Added abstract-query-only Exa search, teaching-domain result filtering, and deterministic no-key providers.
+- GREEN: `npm test -- packages/twin-engine && npm run typecheck`
+  - 4 provider/engine tests passed without network or credentials; workspace typecheck passed.
