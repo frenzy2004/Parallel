@@ -10,6 +10,7 @@ import type {
 } from "@parallel/contracts";
 import {
   PrecedentStore,
+  recordPrecedentFeedback,
   recordPrecedentOutcome,
 } from "./precedents.js";
 
@@ -181,6 +182,17 @@ describe("Personal Precedents", () => {
     expect(store.matchPrecedent(signature)).not.toBeNull();
 
     recordPrecedentOutcome(store, signature, twin, "another_twin");
+
+    expect(store.matchPrecedent(signature)).toBeNull();
+    store.close();
+  });
+
+  it("invalidates the matched abstract precedent after Not same feedback", () => {
+    const store = new PrecedentStore(createDatabasePath());
+    save(store);
+    expect(store.matchPrecedent(signature)).not.toBeNull();
+
+    expect(recordPrecedentFeedback(store, signature, "not_same")).toBe(true);
 
     expect(store.matchPrecedent(signature)).toBeNull();
     store.close();

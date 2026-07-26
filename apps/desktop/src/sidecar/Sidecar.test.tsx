@@ -22,7 +22,7 @@ const recognizedEvent: TwinEvent = {
     exaQuery: "introductory statics moment about a point worked example",
     originalAnchorRegions: [
       {
-        anchorId: "force",
+        anchorId: "force-line",
         region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
       },
       {
@@ -46,6 +46,15 @@ const events: TwinEvent[] = [
     },
   },
   {
+    state: "twin_step",
+    index: 1,
+    step: {
+      id: "step-2",
+      explanation: "Resolve the applied-force contribution.",
+      expression: "M_F = Fd",
+    },
+  },
+  {
     state: "complete",
     twin: {
       patternId: "moment_about_point",
@@ -56,11 +65,16 @@ const events: TwinEvent[] = [
           explanation: "Take moments about A.",
           expression: "ΣM_A = 0",
         },
+        {
+          id: "step-2",
+          explanation: "Resolve the applied-force contribution.",
+          expression: "M_F = Fd",
+        },
       ],
       mappingEdges: [
         {
           twinAnchorId: "force",
-          originalAnchorId: "force",
+          originalAnchorId: "force-line",
           label: "applied force",
           workedStepIds: ["step-1"],
         },
@@ -106,7 +120,7 @@ describe("Sidecar", () => {
     fireEvent.click(screen.getByRole("button", { name: /map/i }));
     expect(onMap).toHaveBeenLastCalledWith([
       {
-        anchorId: "force",
+        anchorId: "force-line",
         label: "applied force",
         region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
         workedStepIds: ["step-1"],
@@ -141,11 +155,58 @@ describe("Sidecar", () => {
 
     expect(onMap).toHaveBeenLastCalledWith([
       {
-        anchorId: "force",
+        anchorId: "force-line",
         label: "applied force",
         region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
         workedStepIds: ["step-1"],
       },
     ]);
+  });
+
+  it("requests a real regeneration from the active session", () => {
+    const onAnother = vi.fn();
+    render(
+      <Sidecar
+        events={events}
+        onDismiss={() => undefined}
+        onAnother={onAnother}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /regenerate/i }));
+    fireEvent.keyDown(window, { key: "n" });
+
+    expect(onAnother).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a matched Personal Precedent and accepts Not same feedback", () => {
+    const onPrecedentFeedback = vi.fn();
+    render(
+      <Sidecar
+        events={[recognizedEvent]}
+        onDismiss={() => undefined}
+        precedentMatch={{
+          score: 0.96,
+          precedent: {
+            signatureHash: "sha256:precedent",
+            patternId: "moment_about_point",
+            mappingSummary: "bracket force ↔ original force",
+            twinStyle: "moment_about_point:sign-bracket",
+            outcome: "unlocked",
+            laterTransferOutcome: null,
+            createdAt: "2026-07-26T08:00:00.000Z",
+          },
+        }}
+        onPrecedentFeedback={onPrecedentFeedback}
+      />,
+    );
+
+    expect(screen.getByText("Same shape")).toBeInTheDocument();
+    expect(
+      screen.getByText("bracket force ↔ original force"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /not same/i }));
+    expect(onPrecedentFeedback).toHaveBeenCalledOnce();
   });
 });

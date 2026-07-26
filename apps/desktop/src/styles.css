@@ -25,6 +25,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .capture-surface,
 .capture-image,
 .capture-shade,
@@ -119,6 +124,34 @@ h1 {
 
 .twin-statement {
   line-height: 1.5;
+}
+
+.precedent-card {
+  margin: 12px 0;
+  border: 1px solid #406156;
+  border-radius: 11px;
+  padding: 12px;
+  background: rgb(31 72 59 / 35%);
+}
+
+.precedent-card > div {
+  display: grid;
+  gap: 3px;
+}
+
+.precedent-card strong {
+  font-size: 15px;
+}
+
+.precedent-card span,
+.precedent-card p {
+  color: #b9c9c3;
+  font-size: 12px;
+}
+
+.precedent-card p {
+  margin: 9px 0;
+  line-height: 1.45;
 }
 
 .worked-steps {
