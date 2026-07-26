@@ -1,4 +1,4 @@
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { realpathSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { resolveDesktopSqliteBinding } from "./lib/native-binding-path.mjs";
@@ -8,10 +8,15 @@ describe("desktop native binding resolution", () => {
     const root = resolve(import.meta.dirname, "..");
     const desktopRoot = join(root, "apps", "desktop");
     const binding = resolveDesktopSqliteBinding(desktopRoot);
-    const resolvedPackageRoot = dirname(dirname(dirname(binding)));
-
-    expect(realpathSync(resolvedPackageRoot)).toBe(
-      realpathSync(join(desktopRoot, "node_modules", "better-sqlite3")),
+    const expectedBinding = join(
+      desktopRoot,
+      "node_modules",
+      "better-sqlite3",
+      "build",
+      "Release",
+      "better_sqlite3.node",
     );
+
+    expect(binding).toBe(realpathSync(expectedBinding));
   });
 });

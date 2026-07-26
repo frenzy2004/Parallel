@@ -76,6 +76,24 @@ describe("twin event sequence", () => {
     ).toBe(true);
   });
 
+  it("compares streamed step fields independent of object key order", () => {
+    const completeStep = complete.twin.workedSteps[0]!;
+    const reorderedStep = {
+      expression: completeStep.expression,
+      explanation: completeStep.explanation,
+      id: completeStep.id,
+    };
+
+    expect(
+      isValidTwinEventSequence([
+        { state: "reading" },
+        recognized,
+        { state: "twin_step", index: 0, step: reorderedStep },
+        complete,
+      ]),
+    ).toBe(true);
+  });
+
   it.each([
     { events: [{ state: "reading" }] },
     { events: [complete] },

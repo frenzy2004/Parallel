@@ -132,6 +132,42 @@ describe("ParallelWorkspace", () => {
     ).toBeDisabled();
   });
 
+  it("rejects a non-image before creating a local preview", () => {
+    render(<ParallelWorkspace />);
+    const textFile = new File(["not a screenshot"], "notes.txt", {
+      type: "text/plain",
+    });
+
+    fireEvent.change(screen.getByLabelText(/choose a screenshot/i), {
+      target: { files: [textFile] },
+    });
+
+    expect(
+      screen.getByText(/choose a PNG, JPEG or WebP screenshot/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /analyze my screenshot/i }),
+    ).toBeDisabled();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it("rejects a zero-byte image before creating a local preview", () => {
+    render(<ParallelWorkspace />);
+    const emptyImage = new File([], "empty.png", { type: "image/png" });
+
+    fireEvent.change(screen.getByLabelText(/choose a screenshot/i), {
+      target: { files: [emptyImage] },
+    });
+
+    expect(
+      screen.getByText(/non-empty screenshot smaller than 4 MB/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /analyze my screenshot/i }),
+    ).toBeDisabled();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
   it("keeps the bundled demo fixture-only even after a screenshot was selected", async () => {
     const fetchMock = vi
       .fn()

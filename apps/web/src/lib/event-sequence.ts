@@ -2,7 +2,9 @@ import type { TwinRender, WorkedStep } from "@parallel/contracts";
 import type { TwinEvent } from "@parallel/contracts/events";
 
 const sameStep = (left: WorkedStep, right: WorkedStep): boolean =>
-  JSON.stringify(left) === JSON.stringify(right);
+  left.id === right.id &&
+  left.explanation === right.explanation &&
+  left.expression === right.expression;
 
 const completesRecognizedTwin = (
   event: Extract<TwinEvent, { state: "complete" }>,
