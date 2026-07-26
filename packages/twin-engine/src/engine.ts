@@ -91,10 +91,15 @@ export class TwinEngine {
         label: signature.patternId.replaceAll("_", " "),
         signature,
       };
-      const evidence = await this.providers.evidence.search({
-        query: signature.exaQuery,
-        ...(options.signal ? { signal: options.signal } : {}),
-      });
+      let evidence: SourceRef[] = [];
+      try {
+        evidence = await this.providers.evidence.search({
+          query: signature.exaQuery,
+          ...(options.signal ? { signal: options.signal } : {}),
+        });
+      } catch (error) {
+        if (isAbortError(error)) throw error;
+      }
       throwIfAborted(options.signal);
       const twin = await this.compileTwin(
         signature,
@@ -183,16 +188,20 @@ export const createTwinEngineFromEnv = (
   env: Record<string, string | undefined> = process.env,
   fetchImpl: typeof fetch = fetch,
 ): TwinEngine => {
-  const demoStructure =
-    env.PARALLEL_DEMO_MODE === "1"
-      ? new DemoStructureProvider()
-      : new UnavailableStructureProvider();
   const demoEvidence = new DemoEvidenceProvider();
   const verifiedCompiler = new VerifiedCompilerProvider();
 
+  if (env.PARALLEL_DEMO_MODE === "1") {
+    return new TwinEngine({
+      structure: new DemoStructureProvider(),
+      evidence: demoEvidence,
+      compiler: verifiedCompiler,
+    });
+  }
+
   if (!env.OPENAI_API_KEY) {
     return new TwinEngine({
-      structure: demoStructure,
+      structure: new UnavailableStructureProvider(),
       evidence: demoEvidence,
       compiler: verifiedCompiler,
     });

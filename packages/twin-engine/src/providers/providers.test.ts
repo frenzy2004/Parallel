@@ -233,6 +233,37 @@ describe("provider privacy boundaries", () => {
     expect(events.at(-1)).not.toHaveProperty("originalAnswer");
   });
 
+  it("gives explicit demo mode precedence over inherited live credentials and models", async () => {
+    const network = vi.fn(async () => {
+      throw new Error("demo mode must not touch the network");
+    });
+    vi.stubGlobal("fetch", network);
+    try {
+      const engine = createTwinEngineFromEnv(
+        {
+          PARALLEL_DEMO_MODE: "1",
+          OPENAI_API_KEY: "inherited-openai-key",
+          EXA_API_KEY: "inherited-exa-key",
+          OPENAI_RECOGNITION_MODEL: "inherited-live-model",
+        },
+        network as typeof fetch,
+      );
+      const events: TwinEvent[] = [];
+
+      for await (const event of engine.stream({
+        cropDataUrl: secretCrop,
+        coursePackId: "statics-2d-v1",
+      })) {
+        events.push(event);
+      }
+
+      expect(events.at(-1)?.state).toBe("complete");
+      expect(network).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("refuses arbitrary no-key captures outside the explicit bundled demo", async () => {
     const events: TwinEvent[] = [];
     for await (const event of createTwinEngineFromEnv({}).stream({
