@@ -18,6 +18,17 @@ export interface TwinStartDecision extends BudgetDecision {
   charged: boolean;
 }
 
+export type FreshRecognitionRun<T> =
+  | {
+      started: false;
+      decision: TwinStartDecision;
+    }
+  | {
+      started: true;
+      decision: TwinStartDecision;
+      value: T;
+    };
+
 interface EligiblePrecedentLookup {
   reopenEligibleTwin(signatureHash: string): EligiblePrecedentTwin | null;
 }
@@ -123,6 +134,30 @@ export class DesktopTwinBudgetAuthority {
       allowed: true,
       charged: false,
       remaining: this.budget.remaining(),
+    };
+  }
+
+  async runFreshRecognition<T>(
+    env: Record<string, string | undefined>,
+    work: () => T | Promise<T>,
+  ): Promise<FreshRecognitionRun<T>> {
+    const decision = this.authorizeFreshRecognition(env);
+    if (!decision.allowed) {
+      return { started: false, decision };
+    }
+    return {
+      started: true,
+      decision,
+      value: await work(),
+    };
+  }
+
+  async runRegeneration<T>(
+    work: () => T | Promise<T>,
+  ): Promise<{ decision: TwinStartDecision; value: T }> {
+    return {
+      decision: this.authorizeRegeneration(),
+      value: await work(),
     };
   }
 

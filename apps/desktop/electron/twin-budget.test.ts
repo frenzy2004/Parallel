@@ -161,6 +161,62 @@ describe("persistent Electron paid-recognition budget", () => {
     budget.close();
   });
 
+  it("refuses before invoking fresh live recognition work", async () => {
+    const budget = new PersistentRollingTwinBudget(createDatabasePath(), {
+      limit: 1,
+      now: () => 4_500_000,
+    });
+    const authority = new DesktopTwinBudgetAuthority(budget);
+    let paidRecognitionCalls = 0;
+    const runPaidRecognition = async (): Promise<string> => {
+      paidRecognitionCalls += 1;
+      return "started";
+    };
+
+    await expect(
+      authority.runFreshRecognition(
+        { OPENAI_API_KEY: "configured-live-key" },
+        runPaidRecognition,
+      ),
+    ).resolves.toMatchObject({
+      started: true,
+      value: "started",
+      decision: { allowed: true, charged: true },
+    });
+    await expect(
+      authority.runFreshRecognition(
+        { OPENAI_API_KEY: "configured-live-key" },
+        runPaidRecognition,
+      ),
+    ).resolves.toMatchObject({
+      started: false,
+      decision: { allowed: false, charged: false },
+    });
+    expect(paidRecognitionCalls).toBe(1);
+    budget.close();
+  });
+
+  it("runs abstract regeneration without consuming a paid slot", async () => {
+    const budget = new PersistentRollingTwinBudget(createDatabasePath(), {
+      limit: 1,
+      now: () => 4_600_000,
+    });
+    const authority = new DesktopTwinBudgetAuthority(budget);
+
+    await expect(
+      authority.runRegeneration(async () => "next-variation"),
+    ).resolves.toEqual({
+      decision: { allowed: true, charged: false, remaining: 1 },
+      value: "next-variation",
+    });
+    expect(
+      authority.authorizeFreshRecognition({
+        OPENAI_API_KEY: "configured-live-key",
+      }),
+    ).toMatchObject({ allowed: true, charged: true, remaining: 0 });
+    budget.close();
+  });
+
   it("does not charge a locally validated reopen that returns the stored eligible twin", () => {
     const databasePath = createDatabasePath();
     const precedents = new PrecedentStore(databasePath);
