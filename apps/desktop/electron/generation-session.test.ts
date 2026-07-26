@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  captureModeForScreenAccess,
   GenerationSession,
   dismissOverlayState,
-  recoveryForScreenAccess,
   runGuarded,
 } from "./generation-session.js";
 
@@ -50,19 +50,16 @@ describe("generation lifecycle", () => {
 });
 
 describe("recoverable desktop failures", () => {
+  it("uses instant lasso only when Screen Recording is granted", () => {
+    expect(captureModeForScreenAccess("granted")).toBe("lasso");
+  });
+
   it.each(["denied", "restricted", "not-determined", "unknown"])(
-    "requires visible recovery for Screen Recording status %s",
+    "uses private screenshot import for Screen Recording status %s",
     (status) => {
-      expect(recoveryForScreenAccess(status)).toMatchObject({
-        title: "Screen Recording needed",
-        canOpenSettings: true,
-      });
+      expect(captureModeForScreenAccess(status)).toBe("import");
     },
   );
-
-  it("needs no recovery after Screen Recording is granted", () => {
-    expect(recoveryForScreenAccess("granted")).toBeNull();
-  });
 
   it("turns rejected async work into a handled recovery path", async () => {
     const onFailure = vi.fn();

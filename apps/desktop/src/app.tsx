@@ -1,6 +1,8 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Lasso } from "./capture/Lasso.js";
+import { ScreenshotImport } from "./capture/ScreenshotImport.js";
+import type { ImportRectangle } from "./capture/import-image.js";
 import {
   MappingOverlay,
   type MappingRect,
@@ -29,6 +31,69 @@ function CaptureView(): JSX.Element {
   );
 }
 
+function ImportView(): JSX.Element {
+  const [displayBounds, setDisplayBounds] = useState<ImportRectangle | null>(
+    null,
+  );
+  const [contextError, setContextError] = useState("");
+  useEffect(() => {
+    let active = true;
+    void window.parallel
+      .getCaptureContext()
+      .then((bounds) => {
+        if (active) setDisplayBounds(bounds);
+      })
+      .catch(() => {
+        if (active) {
+          setContextError(
+            "PARALLEL could not prepare screenshot import. Close and try again.",
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (contextError) {
+    return (
+      <main className="import-shell import-unavailable">
+        <span className="brand">PARALLEL</span>
+        <h1>Import is unavailable</h1>
+        <p role="alert">{contextError}</p>
+        <button
+          type="button"
+          onClick={() => ignoreHandledFailure(window.parallel.dismiss())}
+        >
+          Close
+        </button>
+      </main>
+    );
+  }
+  if (!displayBounds) {
+    return (
+      <main className="import-shell import-loading" aria-busy="true">
+        <span className="brand">PARALLEL</span>
+        <p>Preparing private import…</p>
+      </main>
+    );
+  }
+  return (
+    <ScreenshotImport
+      displayBounds={displayBounds}
+      onSubmit={(cropDataUrl, bounds) => {
+        ignoreHandledFailure(
+          window.parallel.submitCrop({ cropDataUrl, bounds }),
+        );
+      }}
+      onDismiss={() => ignoreHandledFailure(window.parallel.dismiss())}
+      onOpenScreenSettings={() =>
+        ignoreHandledFailure(window.parallel.openScreenSettings())
+      }
+    />
+  );
+}
+
 function SidecarView(): JSX.Element {
   return <SidecarSession bridge={window.parallel} />;
 }
@@ -50,6 +115,8 @@ root.render(
   <StrictMode>
     {view === "capture" ? (
       <CaptureView />
+    ) : view === "import" ? (
+      <ImportView />
     ) : view === "mapping" ? (
       <MappingView />
     ) : (

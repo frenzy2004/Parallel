@@ -61,17 +61,10 @@ export interface RecoveryNotice {
   canOpenSettings: boolean;
 }
 
-export const recoveryForScreenAccess = (
-  status: string,
-): RecoveryNotice | null =>
-  status === "granted"
-    ? null
-    : {
-        title: "Screen Recording needed",
-        detail:
-          "Allow PARALLEL in System Settings → Privacy & Security → Screen Recording, then try Option+Space again.",
-        canOpenSettings: true,
-      };
+export type CaptureMode = "lasso" | "import";
+
+export const captureModeForScreenAccess = (status: string): CaptureMode =>
+  status === "granted" ? "lasso" : "import";
 
 export const runGuarded = async <T>(
   task: () => T | Promise<T>,

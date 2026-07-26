@@ -79,6 +79,28 @@ describe("renderer source policy", () => {
       ),
     ).toBe(false);
   });
+
+  it("trusts the import view only on the configured renderer document", () => {
+    const packaged = resolveRendererSource(undefined, rendererFile);
+    expect(
+      isTrustedRendererDocumentUrl(
+        "file:///Applications/PARALLEL/dist/index.html?view=import",
+        packaged,
+      ),
+    ).toBe(true);
+    expect(
+      isTrustedRendererDocumentUrl(
+        "file:///Applications/PARALLEL/dist/other.html?view=import",
+        packaged,
+      ),
+    ).toBe(false);
+    expect(
+      isTrustedRendererDocumentUrl(
+        "https://evil.example/?view=import",
+        packaged,
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("privileged IPC boundary", () => {
@@ -115,6 +137,33 @@ describe("privileged IPC boundary", () => {
         },
         7,
         source,
+      ),
+    ).toThrow(/sender/i);
+  });
+
+  it("can bind a privileged capability to the exact active renderer view", () => {
+    expect(() =>
+      assertTrustedIpcSender(
+        {
+          senderId: 7,
+          senderUrl:
+            "file:///Applications/PARALLEL/dist/index.html?view=import",
+        },
+        7,
+        source,
+        "import",
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertTrustedIpcSender(
+        {
+          senderId: 7,
+          senderUrl:
+            "file:///Applications/PARALLEL/dist/index.html?view=capture",
+        },
+        7,
+        source,
+        "import",
       ),
     ).toThrow(/sender/i);
   });

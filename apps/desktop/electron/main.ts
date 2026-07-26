@@ -21,9 +21,9 @@ import type {
 } from "@parallel/contracts";
 import type { TwinEvent } from "@parallel/contracts/events";
 import {
+  captureModeForScreenAccess,
   GenerationSession,
   dismissOverlayState,
-  recoveryForScreenAccess,
   runGuarded,
   type GenerationLease,
   type RecoveryNotice,
@@ -44,6 +44,7 @@ import {
   validateSinglePayload,
   type RendererOutcome,
   type RendererSource,
+  type RendererView,
 } from "./runtime-guard.js";
 import { TelemetryStore } from "./telemetry.js";
 import {
@@ -64,6 +65,7 @@ let rendererSource: RendererSource = resolveRendererSource(
   rendererFile,
 );
 let captureWindow: BrowserWindow | null = null;
+let activeCaptureView: "capture" | "import" | null = null;
 let sidecarWindow: BrowserWindow | null = null;
 let mappingWindow: BrowserWindow | null = null;
 let activeDisplayBounds: Rectangle | null = null;
@@ -111,7 +113,7 @@ const configureWindowTrust = (window: BrowserWindow): void => {
 
 const loadView = async (
   window: BrowserWindow,
-  view: "capture" | "sidecar" | "mapping",
+  view: RendererView,
 ): Promise<void> => {
   configureWindowTrust(window);
   if (rendererSource.kind === "development") {
@@ -177,6 +179,7 @@ const dismiss = (): void => {
     mappingWindow,
   ]);
   captureWindow = null;
+  activeCaptureView = null;
   sidecarWindow = null;
   mappingWindow = null;
   activeDisplayBounds = null;
@@ -187,6 +190,7 @@ const dismiss = (): void => {
 const assertWindowSender = (
   event: IpcMainInvokeEvent,
   expectedWindow: BrowserWindow | null,
+  expectedView?: RendererView,
 ): void => {
   if (!expectedWindow || expectedWindow.isDestroyed()) {
     throw new Error("Rejected IPC sender without an active overlay window");
@@ -198,6 +202,7 @@ const assertWindowSender = (
     },
     expectedWindow.webContents.id,
     rendererSource,
+    expectedView,
   );
 };
 
@@ -208,7 +213,15 @@ const assertActiveOverlaySender = (event: IpcMainInvokeEvent): void => {
       !window.isDestroyed() &&
       window.webContents.id === event.sender.id,
   );
-  assertWindowSender(event, expected ?? null);
+  assertWindowSender(
+    event,
+    expected ?? null,
+    expected === captureWindow
+      ? (activeCaptureView ?? undefined)
+      : expected === sidecarWindow
+        ? "sidecar"
+        : undefined,
+  );
 };
 
 const resetAttemptState = (): void => {
@@ -217,20 +230,64 @@ const resetAttemptState = (): void => {
   clearActiveTwin();
 };
 
+const showImport = async (
+  display: Electron.Display,
+  requestEpoch: number,
+): Promise<void> => {
+  const width = Math.min(460, display.workArea.width);
+  const height = Math.min(620, display.workArea.height);
+  const target = new BrowserWindow({
+    x: display.workArea.x + Math.round((display.workArea.width - width) / 2),
+    y: display.workArea.y + Math.round((display.workArea.height - height) / 2),
+    width,
+    height,
+    ...secureWindowOptions,
+    show: false,
+    frame: false,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    backgroundColor: "#10131a",
+    title: "PARALLEL · Import a screenshot",
+  });
+  captureWindow = target;
+  activeCaptureView = "import";
+  target.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  target.once("closed", () => {
+    if (captureWindow === target) {
+      captureWindow = null;
+      activeCaptureView = null;
+    }
+  });
+  await loadView(target, "import");
+  if (
+    requestEpoch !== overlayEpoch ||
+    target.isDestroyed() ||
+    captureWindow !== target
+  ) {
+    if (!target.isDestroyed()) target.close();
+    return;
+  }
+  target.show();
+  target.focus();
+};
+
 const openCapture = async (): Promise<void> => {
   dismiss();
   const requestEpoch = overlayEpoch;
   resetAttemptState();
 
   const access = systemPreferences.getMediaAccessStatus("screen");
-  const recovery = recoveryForScreenAccess(access);
-  if (recovery) {
-    await showRecoveryNotice(recovery);
+  const cursor = screen.getCursorScreenPoint();
+  const display = screen.getDisplayNearestPoint(cursor);
+  activeDisplayBounds = display.bounds;
+  if (captureModeForScreenAccess(access) === "import") {
+    await showImport(display, requestEpoch);
     return;
   }
 
-  const cursor = screen.getCursorScreenPoint();
-  const display = screen.getDisplayNearestPoint(cursor);
   const sources = await desktopCapturer.getSources({
     types: ["screen"],
     thumbnailSize: {
@@ -247,7 +304,6 @@ const openCapture = async (): Promise<void> => {
     throw new Error("No display capture source is available.");
   }
 
-  activeDisplayBounds = display.bounds;
   const target = new BrowserWindow({
     ...display.bounds,
     ...secureWindowOptions,
@@ -259,6 +315,7 @@ const openCapture = async (): Promise<void> => {
     skipTaskbar: true,
   });
   captureWindow = target;
+  activeCaptureView = "capture";
   target.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   await loadView(target, "capture");
   if (
@@ -337,6 +394,7 @@ const showSidecar = async (
   activeLassoBounds = lassoBounds;
   if (captureWindow && !captureWindow.isDestroyed()) captureWindow.close();
   captureWindow = null;
+  activeCaptureView = null;
 
   const bounds = chooseSidecarBounds(lassoBounds, activeDisplayBounds, {
     width: 380,
@@ -478,8 +536,24 @@ ipcMain.handle("parallel:start-capture", (event, ...args: unknown[]) => {
   validateNoPayload(args);
   return runGuarded(openCapture, showUnexpectedFailure);
 });
+ipcMain.handle("parallel:get-capture-context", (event, ...args: unknown[]) => {
+  assertWindowSender(event, captureWindow, "import");
+  validateNoPayload(args);
+  if (!activeDisplayBounds) {
+    throw new Error("No active capture display.");
+  }
+  return { ...activeDisplayBounds };
+});
+ipcMain.handle("parallel:open-screen-settings", (event, ...args: unknown[]) => {
+  assertWindowSender(event, captureWindow, "import");
+  validateNoPayload(args);
+  return runGuarded(
+    () => shell.openExternal(screenRecordingSettingsUrl),
+    showUnexpectedFailure,
+  );
+});
 ipcMain.handle("parallel:submit-crop", (event, ...args: unknown[]) => {
-  assertWindowSender(event, captureWindow);
+  assertWindowSender(event, captureWindow, activeCaptureView ?? undefined);
   if (!activeDisplayBounds) throw new Error("No active capture display.");
   const validated = validateCropPayload(
     validateSinglePayload(args),

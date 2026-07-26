@@ -21,6 +21,7 @@ This file records failures, root causes, fixes, and fresh evidence so later work
 | Fixed | `better-sqlite3` could load in Node tests but fail in Electron. | Node and Electron use different native ABIs. | Build an ignored Electron-specific binding, pass it explicitly to both local stores, and restore the Node binding after build. | Runtime probe opens both SQLite stores and reports `sqlite_native_load=passed`. |
 | Fixed | Generated `dist-electron` output was tracked. | Initial build output was committed before the ignore rule. | Remove generated binaries and ignore `dist-electron/` and the native binding. | Source tree remains clean after build. |
 | Pending user acceptance | Computer Use could launch Electron but could not inspect or drive it. PARALLEL also lacked Screen Recording permission. | macOS Accessibility/Screen Recording grants were unavailable in this session. | User explicitly chose to skip Computer Use and perform the final hands-on overlay check. Automated native launch remains mandatory. | No claim of a Computer Use interaction test is made. |
+| Fixed | `Option+Space` showed a blocking Screen Recording warning when access was not granted. | The product treated full-screen lasso as the only capture path, making a broad macOS permission feel mandatory. | Keep lasso for granted users; otherwise open a compact paste/drop/choose import view. Bind the optional Settings action to the active import window’s exact trusted document, reuse bounded crop validation, and keep bytes only in the active generation lease. | 84/84 desktop tests pass, including import UX/file/geometry and hostile IPC URL cases; desktop typecheck and production build pass. |
 
 ## Product correctness
 
@@ -37,4 +38,8 @@ This file records failures, root causes, fixes, and fresh evidence so later work
 - Numerically closed Statics branch: 44/44 tests plus typecheck/build passed.
 - Mapping branch: 39/39 tests plus typecheck/build/evaluate/privacy passed.
 - First integrated desktop/mapping build: 99/99 tests plus typecheck/build/native probe passed.
+- Privacy-first capture branch: 84/84 desktop tests, desktop typecheck, and
+  production build pass. Its `origin/build/prototype@0cbc6e6` baseline had two
+  unrelated demo-refusal failures; those were fixed upstream in `b2139f4` and
+  must be included when integrating this branch.
 - Final verification remains required after the privacy-first screenshot fallback is added.

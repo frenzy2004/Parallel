@@ -14,7 +14,10 @@ fit. The pilot protocol and TA review remain responsible for those claims.
 - macOS
 - Node.js 22 or newer
 - npm
-- Screen Recording permission for the terminal/Electron host
+
+Screen Recording is optional. Without it, PARALLEL accepts a screenshot by
+paste, drag/drop, or the file picker. Grant it only if you want the instant
+one-click lasso.
 
 ## Run without API keys
 
@@ -24,8 +27,16 @@ npm run demo
 ```
 
 The command builds the renderer and Electron processes, opens the bundled
-Statics fixture, then starts PARALLEL. Press `Option+Space`, lasso the complete
-problem and diagram, and follow the sidecar. Demo mode uses no network.
+Statics fixture, then starts PARALLEL. Press `Option+Space`:
+
+- Without Screen Recording access, paste, drop, or choose one complete PNG,
+  JPEG, or WebP problem screenshot (up to 8 MiB), then select **Make twin**.
+- With Screen Recording access, lasso the complete problem and diagram
+  directly on screen.
+
+The compact import view includes a trusted **Enable one-click lasso** action
+that opens the exact macOS Screen Recording settings pane. Demo mode uses no
+network.
 
 Keyboard controls:
 
@@ -73,7 +84,15 @@ Optional model overrides:
 ## Privacy and safety boundaries
 
 - Capture occurs only after explicit `Option+Space` invocation.
-- Only the in-memory lasso crop is submitted.
+- Only the in-memory lasso crop or explicitly imported screenshot is
+  submitted.
+- Imported screenshots are never written to disk by PARALLEL. They remain
+  only in the active generation session and are erased on dismissal. In live
+  mode, the selected image is sent only to the configured OpenAI provider to
+  make the twin.
+- Import accepts exactly one PNG, JPEG, or WebP image under the existing 8 MiB
+  crop limit; the main process validates MIME, base64 bytes, payload shape,
+  display bounds, sender identity, and the exact trusted renderer view.
 - OpenAI requests use strict structured outputs and `store: false`.
 - Exa receives only an abstract query, uses an exact teaching-domain allowlist,
   and is filtered again after response.
