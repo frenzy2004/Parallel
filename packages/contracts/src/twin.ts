@@ -9,6 +9,28 @@ export const StaticsPatternIdSchema = z.enum([
   "equivalent_distributed_load",
 ]);
 
+export const NormalizedRegionSchema = z
+  .object({
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    width: z.number().positive().max(1),
+    height: z.number().positive().max(1),
+  })
+  .strict()
+  .refine(({ x, width }) => x + width <= 1, {
+    message: "region extends beyond the lasso width",
+  })
+  .refine(({ y, height }) => y + height <= 1, {
+    message: "region extends beyond the lasso height",
+  });
+
+export const OriginalAnchorRegionSchema = z
+  .object({
+    anchorId: z.string().min(1).max(64),
+    region: NormalizedRegionSchema,
+  })
+  .strict();
+
 export const StructuralSignatureSchema = z
   .object({
     domain: z.literal("statics_2d"),
@@ -22,6 +44,16 @@ export const StructuralSignatureSchema = z
     missingContext: z.array(z.string().min(1)),
     confidence: z.number().min(0).max(1),
     exaQuery: z.string().min(10).max(500),
+    originalAnchorRegions: z
+      .array(OriginalAnchorRegionSchema)
+      .min(1)
+      .max(8)
+      .refine(
+        (anchors) =>
+          new Set(anchors.map((anchor) => anchor.anchorId)).size ===
+          anchors.length,
+        { message: "anchor ids must be unique" },
+      ),
   })
   .strict();
 
@@ -38,6 +70,7 @@ export const MappingEdgeSchema = z
     twinAnchorId: z.string().min(1),
     originalAnchorId: z.string().min(1),
     label: z.string().min(1),
+    workedStepIds: z.array(z.string().min(1)).min(1),
   })
   .strict();
 
@@ -93,6 +126,8 @@ export const TwinRequestSchema = z
   .strict();
 
 export type StaticsPatternId = z.infer<typeof StaticsPatternIdSchema>;
+export type NormalizedRegion = z.infer<typeof NormalizedRegionSchema>;
+export type OriginalAnchorRegion = z.infer<typeof OriginalAnchorRegionSchema>;
 export type StructuralSignature = z.infer<typeof StructuralSignatureSchema>;
 export type WorkedStep = z.infer<typeof WorkedStepSchema>;
 export type MappingEdge = z.infer<typeof MappingEdgeSchema>;

@@ -21,7 +21,12 @@ import {
   PrecedentStore,
   recordPrecedentOutcome,
 } from "./precedents.js";
-import { chooseSidecarBounds, type Rectangle } from "./window-placement.js";
+import {
+  chooseSidecarBounds,
+  projectNormalizedHighlights,
+  type MappingHighlight,
+  type Rectangle,
+} from "./window-placement.js";
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 const rendererUrl = process.env.PARALLEL_RENDERER_URL;
@@ -174,8 +179,8 @@ const showSidecar = async (
   }
 };
 
-const showMapping = async (anchorIds: string[]): Promise<void> => {
-  if (!activeDisplayBounds || !activeLassoBounds || anchorIds.length === 0) {
+const showMapping = async (highlights: MappingHighlight[]): Promise<void> => {
+  if (!activeDisplayBounds || !activeLassoBounds || highlights.length === 0) {
     mappingWindow?.close();
     mappingWindow = null;
     return;
@@ -193,14 +198,14 @@ const showMapping = async (anchorIds: string[]): Promise<void> => {
     mappingWindow.setIgnoreMouseEvents(true);
     await loadView(mappingWindow, "mapping");
   }
-  const localRect = {
-    x: activeLassoBounds.x - activeDisplayBounds.x,
-    y: activeLassoBounds.y - activeDisplayBounds.y,
-    width: activeLassoBounds.width,
-    height: activeLassoBounds.height,
-    label: anchorIds.join(", "),
-  };
-  mappingWindow.webContents.send("parallel:mapping-rects", [localRect]);
+  mappingWindow.webContents.send(
+    "parallel:mapping-rects",
+    projectNormalizedHighlights(
+      highlights,
+      activeLassoBounds,
+      activeDisplayBounds,
+    ),
+  );
 };
 
 app.whenReady().then(() => {
@@ -230,7 +235,8 @@ ipcMain.handle(
 );
 ipcMain.handle(
   "parallel:set-mapping-highlights",
-  async (_event, anchorIds: string[]): Promise<void> => showMapping(anchorIds),
+  async (_event, highlights: MappingHighlight[]): Promise<void> =>
+    showMapping(highlights),
 );
 ipcMain.handle("parallel:dismiss", () => dismiss());
 ipcMain.handle(

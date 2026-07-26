@@ -14,6 +14,22 @@ export interface SidecarBounds extends Rectangle {
   placement: "right" | "left" | "below";
 }
 
+export interface MappingHighlight {
+  anchorId: string;
+  label: string;
+  workedStepIds?: string[];
+  region: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+export interface ProjectedMappingRect extends Rectangle {
+  label: string;
+}
+
 const GAP = 16;
 
 const clamp = (value: number, min: number, max: number): number =>
@@ -57,3 +73,16 @@ export const chooseSidecarBounds = (
     placement: "below",
   };
 };
+
+export const projectNormalizedHighlights = (
+  highlights: MappingHighlight[],
+  lasso: Rectangle,
+  display: Rectangle,
+): ProjectedMappingRect[] =>
+  highlights.map(({ label, region }) => ({
+    x: Math.round(lasso.x - display.x + region.x * lasso.width),
+    y: Math.round(lasso.y - display.y + region.y * lasso.height),
+    width: Math.round(region.width * lasso.width),
+    height: Math.round(region.height * lasso.height),
+    label,
+  }));

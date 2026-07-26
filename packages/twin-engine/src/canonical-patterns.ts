@@ -1,14 +1,31 @@
 import {
   StaticsPatternIdSchema,
   StructuralSignatureSchema,
+  type OriginalAnchorRegion,
   type StaticsPatternId,
   type StructuralSignature,
 } from "@parallel/contracts";
 
 type CanonicalPattern = Omit<
   StructuralSignature,
-  "domain" | "patternId" | "missingContext" | "confidence"
+  | "domain"
+  | "patternId"
+  | "missingContext"
+  | "confidence"
+  | "originalAnchorRegions"
 >;
+
+const CANONICAL_ANCHOR_IDS: Record<
+  StaticsPatternId,
+  readonly string[]
+> = {
+  concurrent_force_equilibrium: ["force-intersection"],
+  resultant_coplanar_forces: ["force-system"],
+  moment_about_point: ["moment-center", "force-line"],
+  rigid_body_equilibrium_2d: ["pin-support", "tension-member"],
+  couple_moments: ["opposite-force-pair"],
+  equivalent_distributed_load: ["distributed-load", "load-centroid"],
+};
 
 const CANONICAL_PATTERNS: Record<StaticsPatternId, CanonicalPattern> = {
   concurrent_force_equilibrium: {
@@ -82,6 +99,7 @@ const CANONICAL_EXA_QUERIES = new Set(
 export const buildCanonicalSignature = (
   patternId: unknown,
   confidence: unknown,
+  originalAnchorRegions: OriginalAnchorRegion[],
 ): StructuralSignature => {
   const validatedPatternId = StaticsPatternIdSchema.parse(patternId);
   const validatedConfidence = StructuralSignatureSchema.shape.confidence.parse(
@@ -93,6 +111,7 @@ export const buildCanonicalSignature = (
     ...CANONICAL_PATTERNS[validatedPatternId],
     missingContext: [],
     confidence: validatedConfidence,
+    originalAnchorRegions,
   });
 };
 
@@ -100,7 +119,43 @@ export const canonicalizeSignature = (
   input: StructuralSignature,
 ): StructuralSignature => {
   const validated = StructuralSignatureSchema.parse(input);
-  return buildCanonicalSignature(validated.patternId, validated.confidence);
+  if (!hasCanonicalAnchorCoverage(validated)) {
+    throw new Error("Recognized anchor regions are incomplete");
+  }
+  return buildCanonicalSignature(
+    validated.patternId,
+    validated.confidence,
+    validated.originalAnchorRegions,
+  );
+};
+
+export const canonicalAnchorIds = (
+  patternId: StaticsPatternId,
+): readonly string[] => CANONICAL_ANCHOR_IDS[patternId];
+
+export const placeholderAnchorRegions = (
+  patternId: StaticsPatternId,
+): OriginalAnchorRegion[] =>
+  CANONICAL_ANCHOR_IDS[patternId].map((anchorId, index) => ({
+    anchorId,
+    region: {
+      x: 0.1 + index * 0.45,
+      y: 0.2,
+      width: 0.3,
+      height: 0.6,
+    },
+  }));
+
+export const hasCanonicalAnchorCoverage = (
+  input: Pick<StructuralSignature, "patternId" | "originalAnchorRegions">,
+): boolean => {
+  const expected = CANONICAL_ANCHOR_IDS[input.patternId];
+  const received = input.originalAnchorRegions.map(({ anchorId }) => anchorId);
+  return (
+    received.length === expected.length &&
+    new Set(received).size === received.length &&
+    expected.every((anchorId) => received.includes(anchorId))
+  );
 };
 
 export const isCanonicalExaQuery = (query: string): boolean =>

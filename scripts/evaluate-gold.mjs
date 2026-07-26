@@ -31,6 +31,12 @@ const results = cases.map((goldCase) => {
     missingContext: [],
     confidence: 0.98,
     exaQuery: `introductory 2D statics worked example ${goldCase.expectedPattern}`,
+    originalAnchorRegions: [
+      {
+        anchorId: "problem-feature",
+        region: { x: 0.2, y: 0.2, width: 0.6, height: 0.6 },
+      },
+    ],
   });
   const startedAt = performance.now();
   const twin = compileVerifiedTwin(signature, goldCase.seed);

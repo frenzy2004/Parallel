@@ -70,8 +70,6 @@ clear skipped status when either credential is absent.
 Optional model overrides:
 
 - `OPENAI_RECOGNITION_MODEL` (default `gpt-5.6-terra`; chosen from live latency samples)
-- `OPENAI_COMPILATION_MODEL` (default `gpt-5.6-terra`)
-
 ## Privacy and safety boundaries
 
 - Capture occurs only after explicit `Option+Space` invocation.

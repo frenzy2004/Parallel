@@ -25,6 +25,16 @@ const signature: StructuralSignature = {
   missingContext: [],
   confidence: 0.96,
   exaQuery: safeQuery,
+  originalAnchorRegions: [
+    {
+      anchorId: "moment-center",
+      region: { x: 0.08, y: 0.42, width: 0.12, height: 0.18 },
+    },
+    {
+      anchorId: "force-line",
+      region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
+    },
+  ],
 };
 
 const twin: TwinRender = {
@@ -42,6 +52,7 @@ const twin: TwinRender = {
       twinAnchorId: "load",
       originalAnchorId: "load",
       label: "applied load",
+      workedStepIds: ["moment"],
     },
   ],
   sourceRefs: [],
@@ -121,21 +132,19 @@ describe("provider privacy boundaries", () => {
     expect(results[0]?.url).toContain("ocw.mit.edu");
   });
 
-  it("uses image input, strict formats, low reasoning, and no response storage", async () => {
+  it("uses classifier-only image input, a strict format, low reasoning, and no storage", async () => {
     const calls: unknown[] = [];
     const client = {
       responses: {
         parse: vi.fn(async (request: unknown) => {
           calls.push(request);
           return {
-            output_parsed:
-              calls.length === 1
-                ? {
-                    patternId: "moment_about_point",
-                    confidence: 0.96,
-                    hasSufficientContext: true,
-                  }
-                : twin,
+            output_parsed: {
+              patternId: "moment_about_point",
+              confidence: 0.96,
+              hasSufficientContext: true,
+              originalAnchorRegions: signature.originalAnchorRegions,
+            },
           };
         }),
       },
@@ -143,7 +152,6 @@ describe("provider privacy boundaries", () => {
     const provider = new OpenAITwinProvider(client);
 
     await provider.parseStructure(secretCrop, "statics-2d-v1");
-    await provider.compileTwin(signature, [], 11);
 
     const recognition = calls[0] as Record<string, unknown>;
     const input = recognition.input as Array<Record<string, unknown>>;
@@ -159,12 +167,7 @@ describe("provider privacy boundaries", () => {
       detail: "auto",
     });
     expect((recognition.text as { format?: unknown }).format).toBeDefined();
-
-    expect(calls[1]).toMatchObject({
-      model: "gpt-5.6-terra",
-      store: false,
-      reasoning: { effort: "low" },
-    });
+    expect(calls).toHaveLength(1);
   });
 
   it("streams a deterministic no-key demo without network access", async () => {
@@ -253,5 +256,36 @@ describe("provider privacy boundaries", () => {
     if (completed?.state === "complete") {
       expect(completed.twin.sourceRefs).toEqual([evidence]);
     }
+  });
+
+  it("fails closed when recognized anchor regions cannot join the canonical map", async () => {
+    const engine = new TwinEngine({
+      structure: {
+        parseStructure: async () => ({
+          ...signature,
+          originalAnchorRegions: [
+            {
+              anchorId: "force-system",
+              region: { x: 0.1, y: 0.1, width: 0.3, height: 0.3 },
+            },
+          ],
+        }),
+      },
+      evidence: { search: async () => [] },
+      compiler: {
+        compileTwin: async (receivedSignature, _evidence, seed) =>
+          compileVerifiedTwin(receivedSignature, seed),
+      },
+    });
+    const states: string[] = [];
+    for await (const event of engine.stream({
+      cropDataUrl: secretCrop,
+      coursePackId: "statics-2d-v1",
+    })) {
+      states.push(event.state);
+    }
+
+    expect(states).not.toContain("complete");
+    expect(states.at(-1)).toBe("error");
   });
 });

@@ -29,6 +29,12 @@ const makeSignature = (patternId: StaticsPatternId): StructuralSignature =>
     missingContext: [],
     confidence: 0.97,
     exaQuery: `introductory 2D statics worked example ${patternId}`,
+    originalAnchorRegions: [
+      {
+        anchorId: "problem-feature",
+        region: { x: 0.2, y: 0.2, width: 0.6, height: 0.6 },
+      },
+    ],
   });
 
 const momentSignature = makeSignature("moment_about_point");
@@ -144,6 +150,13 @@ describe("verified Statics compiler", () => {
       expect(() => TwinRenderSchema.parse(twin)).not.toThrow();
       expect(twin).not.toHaveProperty("originalAnswer");
       expect(twin.mappingEdges.length).toBeGreaterThan(0);
+      const stepIds = new Set(twin.workedSteps.map((step) => step.id));
+      for (const edge of twin.mappingEdges) {
+        expect(edge.workedStepIds?.length).toBeGreaterThan(0);
+        expect(
+          edge.workedStepIds?.every((stepId) => stepIds.has(stepId)),
+        ).toBe(true);
+      }
     }
   });
 

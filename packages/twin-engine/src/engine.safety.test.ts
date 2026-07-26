@@ -31,6 +31,16 @@ const canonicalMomentSignature: StructuralSignature = {
   missingContext: [],
   confidence: 0.96,
   exaQuery: canonicalQuery,
+  originalAnchorRegions: [
+    {
+      anchorId: "moment-center",
+      region: { x: 0.08, y: 0.42, width: 0.12, height: 0.18 },
+    },
+    {
+      anchorId: "force-line",
+      region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
+    },
+  ],
 };
 
 const poisonedRecognition: StructuralSignature = {
@@ -65,6 +75,8 @@ describe("live intelligence safety boundary", () => {
             patternId: "moment_about_point",
             confidence: 0.96,
             hasSufficientContext: true,
+            originalAnchorRegions:
+              canonicalMomentSignature.originalAnchorRegions,
           },
         })),
       },

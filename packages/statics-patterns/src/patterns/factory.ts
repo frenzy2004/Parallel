@@ -15,7 +15,7 @@ interface PatternConfig {
   invariants: readonly string[];
   allowedMethods: readonly string[];
   buildCase(seed: number): GeneratedStaticsCase;
-  anchors: readonly MappingEdge[];
+  anchors: ReadonlyArray<Omit<MappingEdge, "workedStepIds">>;
 }
 
 export const selectVariant = <T>(

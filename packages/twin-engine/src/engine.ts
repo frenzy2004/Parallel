@@ -103,9 +103,6 @@ export const createTwinEngineFromEnv = (
     ...(env.OPENAI_RECOGNITION_MODEL
       ? { recognitionModel: env.OPENAI_RECOGNITION_MODEL }
       : {}),
-    ...(env.OPENAI_COMPILATION_MODEL
-      ? { compilationModel: env.OPENAI_COMPILATION_MODEL }
-      : {}),
   });
 
   return new TwinEngine({
