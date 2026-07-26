@@ -33,6 +33,7 @@ import {
   recordPrecedentFeedback,
   recordPrecedentOutcome,
 } from "./precedents.js";
+import { eventsForReopenedTwin } from "./precedent-reopen.js";
 import {
   assertTrustedIpcSender,
   isTrustedRendererDocumentUrl,
@@ -83,6 +84,7 @@ let activeSignature: StructuralSignature | null = null;
 let activeTwin: TwinRender | null = null;
 let activeIterator: AsyncGenerator<TwinEvent> | null = null;
 let activeVariation = 0;
+let activePrecedentReopen = false;
 let overlayEpoch = 0;
 
 const generation = new GenerationSession();
@@ -233,6 +235,7 @@ const resetAttemptState = (variation = 0): void => {
   activeSessionId = randomUUID();
   invocationStartedAt = performance.now();
   activeVariation = variation;
+  activePrecedentReopen = false;
   clearActiveTwin();
 };
 
@@ -398,6 +401,27 @@ const deliverTwinEvents = async (
         activePatternId = event.signature.patternId;
         activeSignature = event.signature;
         recognitionMs = Math.round(performance.now() - invocationStartedAt);
+        const precedentMatch =
+          activeVariation === 0
+            ? precedents?.matchPrecedent(event.signature)
+            : null;
+        if (precedentMatch) {
+          activePrecedentReopen = true;
+          target.webContents.send("parallel:twin-event", event);
+          for (const reopenedEvent of eventsForReopenedTwin(
+            precedentMatch.twin,
+          )) {
+            if (!canDeliverToSidecar(lease, target)) return;
+            if (reopenedEvent.state === "complete") {
+              activeTwin = reopenedEvent.twin;
+              fullMappingMs = Math.round(
+                performance.now() - invocationStartedAt,
+              );
+            }
+            target.webContents.send("parallel:twin-event", reopenedEvent);
+          }
+          return;
+        }
       } else if (event.state === "complete") {
         activeTwin = event.twin;
         fullMappingMs = Math.round(performance.now() - invocationStartedAt);
@@ -665,9 +689,14 @@ ipcMain.handle("parallel:record-outcome", (event, ...args: unknown[]) => {
 ipcMain.handle("parallel:match-precedent", (event, ...args: unknown[]) => {
   assertWindowSender(event, sidecarWindow);
   validateNoPayload(args);
-  return activeSignature && precedents
-    ? precedents.matchPrecedent(activeSignature)
-    : null;
+  if (!activeSignature || !precedents) return null;
+  const match = precedents.matchPrecedent(activeSignature);
+  if (!match) return null;
+  return {
+    precedent: match.precedent,
+    score: match.score,
+    reopened: activePrecedentReopen,
+  };
 });
 
 const initializeDesktop = async (): Promise<void> => {

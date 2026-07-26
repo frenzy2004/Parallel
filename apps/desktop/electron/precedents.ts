@@ -29,6 +29,8 @@ interface SavePrecedentInput {
 interface PrecedentRow {
   signature_hash: string;
   signature_json: string;
+  shape_hash: string | null;
+  twin_json: string | null;
   pattern_id: string;
   mapping_summary: string;
   twin_style: string;
@@ -40,6 +42,7 @@ interface PrecedentRow {
 export interface PrecedentMatch {
   precedent: Precedent;
   score: number;
+  twin: TwinRender;
 }
 
 export class PrecedentStore {
@@ -54,6 +57,8 @@ export class PrecedentStore {
       CREATE TABLE IF NOT EXISTS precedents (
         signature_hash TEXT PRIMARY KEY,
         signature_json TEXT NOT NULL,
+        shape_hash TEXT,
+        twin_json TEXT,
         pattern_id TEXT NOT NULL,
         mapping_summary TEXT NOT NULL,
         twin_style TEXT NOT NULL,
@@ -64,6 +69,8 @@ export class PrecedentStore {
       CREATE INDEX IF NOT EXISTS precedents_pattern_outcome
         ON precedents(pattern_id, outcome);
     `);
+    this.ensureColumn("shape_hash", "TEXT");
+    this.ensureColumn("twin_json", "TEXT");
   }
 
   savePrecedent(input: SavePrecedentInput): Precedent {
@@ -71,6 +78,7 @@ export class PrecedentStore {
     const persistedSignature = toAbstractSignature(signature);
     const twin = TwinRenderSchema.parse(input.twin);
     const createdAt = new Date().toISOString();
+    const shapeHash = shapeFingerprint(signature);
     const precedent = PrecedentSchema.parse({
       signatureHash: signatureHash(persistedSignature),
       patternId: signature.patternId,
@@ -83,16 +91,36 @@ export class PrecedentStore {
       createdAt,
     });
 
+    if (input.outcome !== "unlocked") {
+      this.database
+        .prepare(
+          `UPDATE precedents
+           SET outcome = ?, later_transfer_outcome = ?
+           WHERE pattern_id = ? AND shape_hash = ?`,
+        )
+        .run(
+          input.outcome,
+          input.outcome,
+          signature.patternId,
+          shapeHash,
+        );
+    }
+
     this.database
       .prepare(
         `INSERT INTO precedents (
-          signature_hash, signature_json, pattern_id, mapping_summary,
-          twin_style, outcome, later_transfer_outcome, created_at
+          signature_hash, signature_json, shape_hash, twin_json, pattern_id,
+          mapping_summary, twin_style, outcome, later_transfer_outcome,
+          created_at
         ) VALUES (
-          @signatureHash, @signatureJson, @patternId, @mappingSummary,
-          @twinStyle, @outcome, @laterTransferOutcome, @createdAt
+          @signatureHash, @signatureJson, @shapeHash, @twinJson, @patternId,
+          @mappingSummary, @twinStyle, @outcome, @laterTransferOutcome,
+          @createdAt
         )
         ON CONFLICT(signature_hash) DO UPDATE SET
+          signature_json = excluded.signature_json,
+          shape_hash = excluded.shape_hash,
+          twin_json = excluded.twin_json,
           mapping_summary = excluded.mapping_summary,
           twin_style = excluded.twin_style,
           outcome = excluded.outcome,
@@ -102,33 +130,55 @@ export class PrecedentStore {
       .run({
         ...precedent,
         signatureJson: JSON.stringify(persistedSignature),
+        shapeHash,
+        twinJson: JSON.stringify(twin),
       });
     return precedent;
   }
 
   matchPrecedent(input: StructuralSignature): PrecedentMatch | null {
-    const signature = toAbstractSignature(
-      StructuralSignatureSchema.parse(input),
-    );
+    const parsedInput = StructuralSignatureSchema.parse(input);
+    if (parsedInput.confidence < PRECEDENT_MATCH_THRESHOLD) return null;
+    const signature = toAbstractSignature(parsedInput);
+    const currentShapeHash = shapeFingerprint(parsedInput);
     const rows = this.database
       .prepare(
         `SELECT * FROM precedents
-         WHERE pattern_id = ? AND outcome = 'unlocked'`,
+         WHERE pattern_id = ?
+           AND outcome = 'unlocked'
+           AND shape_hash = ?
+           AND twin_json IS NOT NULL
+         ORDER BY created_at DESC`,
       )
-      .all(signature.patternId) as PrecedentRow[];
+      .all(signature.patternId, currentShapeHash) as PrecedentRow[];
 
     let best: PrecedentMatch | null = null;
     for (const row of rows) {
       const storedSignature = toAbstractSignature(
         JSON.parse(row.signature_json),
       );
-      const score = structuralSimilarity(signature, storedSignature);
+      if (storedSignature.confidence < PRECEDENT_MATCH_THRESHOLD) continue;
+      const parsedTwin = TwinRenderSchema.safeParse(
+        row.twin_json ? JSON.parse(row.twin_json) : null,
+      );
+      if (
+        !parsedTwin.success ||
+        !isReusableTwin(parsedTwin.data, parsedInput)
+      ) {
+        continue;
+      }
+      const confidenceAgreement =
+        1 - Math.abs(signature.confidence - storedSignature.confidence);
+      const score =
+        PRECEDENT_MATCH_THRESHOLD +
+        (1 - PRECEDENT_MATCH_THRESHOLD) * confidenceAgreement;
       if (
         score >= PRECEDENT_MATCH_THRESHOLD &&
         (best === null || score > best.score)
       ) {
         best = {
           score,
+          twin: parsedTwin.data,
           precedent: PrecedentSchema.parse({
             signatureHash: row.signature_hash,
             patternId: row.pattern_id,
@@ -142,6 +192,16 @@ export class PrecedentStore {
       }
     }
     return best;
+  }
+
+  private ensureColumn(name: "shape_hash" | "twin_json", type: "TEXT"): void {
+    const columns = this.database
+      .prepare("PRAGMA table_info(precedents)")
+      .all()
+      .map((column) => (column as { name: string }).name);
+    if (!columns.includes(name)) {
+      this.database.exec(`ALTER TABLE precedents ADD COLUMN ${name} ${type}`);
+    }
   }
 
   recordMatchFeedback(
@@ -178,6 +238,22 @@ const toAbstractSignature = (
 const signatureHash = (signature: AbstractSignature): string =>
   `sha256:${createHash("sha256").update(JSON.stringify(signature)).digest("hex")}`;
 
+const shapeFingerprint = (signature: StructuralSignature): string => {
+  const quantize = (value: number): number => Math.round(value * 20) / 20;
+  const shape = signature.originalAnchorRegions
+    .map(({ anchorId, region }) => ({
+      anchorId,
+      x: quantize(region.x),
+      y: quantize(region.y),
+      width: quantize(region.width),
+      height: quantize(region.height),
+    }))
+    .sort((left, right) => left.anchorId.localeCompare(right.anchorId));
+  return `sha256:${createHash("sha256")
+    .update(JSON.stringify(shape))
+    .digest("hex")}`;
+};
+
 const surfaceStyle = (statement: string): string =>
   statement
     .toLowerCase()
@@ -186,26 +262,19 @@ const surfaceStyle = (statement: string): string =>
     .slice(0, 3)
     .join("-");
 
-const exact = (left: string, right: string): number =>
-  left.trim().toLowerCase() === right.trim().toLowerCase() ? 1 : 0;
-
-const jaccard = (left: string[], right: string[]): number => {
-  const leftSet = new Set(left.map((value) => value.toLowerCase()));
-  const rightSet = new Set(right.map((value) => value.toLowerCase()));
-  const intersection = [...leftSet].filter((value) => rightSet.has(value)).length;
-  const union = new Set([...leftSet, ...rightSet]).size;
-  return union === 0 ? 1 : intersection / union;
+const isReusableTwin = (
+  twin: TwinRender,
+  signature: StructuralSignature,
+): boolean => {
+  if (twin.patternId !== signature.patternId || twin.answerLeak) return false;
+  const expectedAnchors = signature.originalAnchorRegions
+    .map((anchor) => anchor.anchorId)
+    .sort();
+  const mappedAnchors = twin.mappingEdges
+    .map((edge) => edge.originalAnchorId)
+    .sort();
+  return JSON.stringify(expectedAnchors) === JSON.stringify(mappedAnchors);
 };
-
-export const structuralSimilarity = (
-  left: AbstractSignature,
-  right: AbstractSignature,
-): number =>
-  0.5 * exact(left.patternId, right.patternId) +
-  0.15 * exact(left.invariant, right.invariant) +
-  0.1 * exact(left.goal, right.goal) +
-  0.1 * exact(left.courseConvention, right.courseConvention) +
-  0.15 * jaccard(left.entities, right.entities);
 
 export const recordPrecedentOutcome = (
   store: PrecedentStore,

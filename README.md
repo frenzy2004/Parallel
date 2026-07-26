@@ -108,14 +108,16 @@ Optional model overrides:
   and is filtered again after response.
 - Compilation fails closed on pattern mismatch, confidence below `0.8`, or a
   non-null rejection reason.
-- Personal Precedents store an abstract signature, mapping summary, twin style,
-  and outcome—never screenshot bytes or raw OCR.
+- Personal Precedents store the safe generated twin, an abstract signature,
+  and a one-way quantized shape fingerprint—never screenshot bytes, raw OCR,
+  or anchor coordinates.
 - `wrong_twin`, `not_same`, and `another_twin` suppress reuse.
 
-The Electron main process saves the active abstract precedent when `Unlocked`
-is selected and records negative outcomes for `Wrong twin`/`Another`. The
-sidecar renders a matched **Personal Precedent** card and lets the student mark
-an incorrect match as **Not same** without persisting screenshot geometry.
+The Electron main process saves the active verified precedent when `Unlocked`
+is selected and records negative outcomes for `Wrong twin`/`Another`. A later
+high-confidence fingerprint match reopens the safe prior twin before Exa or
+fresh compilation. The sidecar renders a **Personal Precedent** card and lets
+the student mark an incorrect match as **Not same**.
 
 ## Packages
 
