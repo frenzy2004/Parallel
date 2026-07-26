@@ -83,10 +83,15 @@ export class TwinEngine {
         label: signature.patternId.replaceAll("_", " "),
         signature,
       };
-      const evidence = await this.providers.evidence.search({
-        query: signature.exaQuery,
-        ...(options.signal ? { signal: options.signal } : {}),
-      });
+      let evidence: SourceRef[] = [];
+      try {
+        evidence = await this.providers.evidence.search({
+          query: signature.exaQuery,
+          ...(options.signal ? { signal: options.signal } : {}),
+        });
+      } catch (error) {
+        if (isAbortError(error)) throw error;
+      }
       throwIfAborted(options.signal);
       const twin = await this.compileTwin(
         signature,
