@@ -135,7 +135,10 @@ describe("SidecarSession", () => {
     emit(recognized);
 
     await waitFor(() => expect(bridge.matchPrecedent).toHaveBeenCalledOnce());
-    expect(await screen.findByText("Same shape")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Verified local shape match"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Prior twin reopened")).toBeInTheDocument();
     expect(
       screen.getByText("bracket force ↔ original force"),
     ).toBeInTheDocument();
