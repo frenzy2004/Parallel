@@ -149,7 +149,7 @@ describe("provider privacy boundaries", () => {
     const input = recognition.input as Array<Record<string, unknown>>;
     const content = input[1]?.content as Array<Record<string, unknown>>;
     expect(recognition).toMatchObject({
-      model: "gpt-5.6-luna",
+      model: "gpt-5.6-terra",
       store: false,
       reasoning: { effort: "low" },
     });

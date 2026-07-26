@@ -46,7 +46,7 @@ export class OpenAITwinProvider implements StructureProvider, CompilerProvider {
     this.recognitionModel =
       options.recognitionModel ??
       process.env.OPENAI_RECOGNITION_MODEL ??
-      "gpt-5.6-luna";
+      "gpt-5.6-terra";
     this.compilationModel =
       options.compilationModel ??
       process.env.OPENAI_COMPILATION_MODEL ??
