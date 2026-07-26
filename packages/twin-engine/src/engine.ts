@@ -1,7 +1,11 @@
 import OpenAI from "openai";
 import {
+  SourceRefSchema,
+  StructuralSignatureSchema,
   TwinRenderSchema,
   TwinRequestSchema,
+  type SourceRef,
+  type StructuralSignature,
   type TwinRequest,
 } from "@parallel/contracts";
 import type { TwinEvent } from "@parallel/contracts/events";
@@ -30,7 +34,7 @@ export class TwinEngine {
 
   async *stream(
     input: TwinRequest,
-    options: { signal?: AbortSignal } = {},
+    options: { signal?: AbortSignal; variation?: number } = {},
   ): AsyncGenerator<TwinEvent> {
     const request = TwinRequestSchema.parse(input);
     if (options.signal?.aborted) return;
@@ -84,23 +88,12 @@ export class TwinEngine {
         ...(options.signal ? { signal: options.signal } : {}),
       });
       throwIfAborted(options.signal);
-      const seed = stableSeed(signature.patternId);
-      const compiledTwin = TwinRenderSchema.parse(
-        await this.providers.compiler.compileTwin(
-          signature,
-          evidence,
-          seed,
-        ),
+      const twin = await this.compileTwin(
+        signature,
+        evidence,
+        parseVariation(options.variation),
+        options.signal,
       );
-      const verifiedTwin = compileVerifiedTwin(signature, seed);
-      throwIfAborted(options.signal);
-      if (!matchesVerifiedTwin(compiledTwin, verifiedTwin)) {
-        throw new Error("Compiled twin failed the structural safety gate");
-      }
-      const twin = TwinRenderSchema.parse({
-        ...compiledTwin,
-        sourceRefs: evidence.filter(isAllowlistedSource),
-      });
       for (const [index, step] of twin.workedSteps.entries()) {
         yield { state: "twin_step", index, step };
       }
@@ -112,6 +105,69 @@ export class TwinEngine {
         message: error instanceof Error ? error.message : "Twin generation failed",
       };
     }
+  }
+
+  async *regenerate(
+    input: {
+      signature: StructuralSignature;
+      evidence: SourceRef[];
+      variation: number;
+    },
+    options: { signal?: AbortSignal } = {},
+  ): AsyncGenerator<TwinEvent> {
+    if (options.signal?.aborted) return;
+    yield { state: "reading" };
+    try {
+      const signature = canonicalizeSignature(
+        StructuralSignatureSchema.parse(input.signature),
+      );
+      const evidence = input.evidence.map((source) =>
+        SourceRefSchema.parse(source),
+      );
+      throwIfAborted(options.signal);
+      yield {
+        state: "recognized",
+        label: signature.patternId.replaceAll("_", " "),
+        signature,
+      };
+      const twin = await this.compileTwin(
+        signature,
+        evidence,
+        parseVariation(input.variation),
+        options.signal,
+      );
+      for (const [index, step] of twin.workedSteps.entries()) {
+        yield { state: "twin_step", index, step };
+      }
+      yield { state: "complete", twin };
+    } catch (error) {
+      if (options.signal?.aborted || isAbortError(error)) return;
+      yield {
+        state: "error",
+        message: error instanceof Error ? error.message : "Twin generation failed",
+      };
+    }
+  }
+
+  private async compileTwin(
+    signature: StructuralSignature,
+    evidence: SourceRef[],
+    variation: number,
+    signal: AbortSignal | undefined,
+  ): Promise<ReturnType<typeof TwinRenderSchema.parse>> {
+    const seed = stableSeed(signature.patternId) + variation;
+    const compiledTwin = TwinRenderSchema.parse(
+      await this.providers.compiler.compileTwin(signature, evidence, seed),
+    );
+    const verifiedTwin = compileVerifiedTwin(signature, seed);
+    throwIfAborted(signal);
+    if (!matchesVerifiedTwin(compiledTwin, verifiedTwin)) {
+      throw new Error("Compiled twin failed the structural safety gate");
+    }
+    return TwinRenderSchema.parse({
+      ...compiledTwin,
+      sourceRefs: evidence.filter(isAllowlistedSource),
+    });
   }
 }
 
@@ -158,6 +214,18 @@ export const createTwinEngineFromEnv = (
 
 const stableSeed = (value: string): number =>
   [...value].reduce((total, character) => total + character.charCodeAt(0), 0);
+
+const parseVariation = (value: number | undefined): number => {
+  const variation = value ?? 0;
+  if (
+    !Number.isSafeInteger(variation) ||
+    variation < 0 ||
+    variation > 10_000
+  ) {
+    throw new Error("Invalid twin variation");
+  }
+  return variation;
+};
 
 const SOURCE_DOMAINS = new Set([
   "engineeringstatics.org",

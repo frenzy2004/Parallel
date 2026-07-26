@@ -78,6 +78,7 @@ let fullMappingMs: number | null = null;
 let activeSignature: StructuralSignature | null = null;
 let activeTwin: TwinRender | null = null;
 let activeIterator: AsyncGenerator<TwinEvent> | null = null;
+let activeVariation = 0;
 let overlayEpoch = 0;
 
 const generation = new GenerationSession();
@@ -181,6 +182,7 @@ const dismiss = (): void => {
   mappingWindow = null;
   activeDisplayBounds = null;
   activeLassoBounds = null;
+  activeVariation = 0;
   clearActiveTwin();
 };
 
@@ -211,9 +213,10 @@ const assertActiveOverlaySender = (event: IpcMainInvokeEvent): void => {
   assertWindowSender(event, expected ?? null);
 };
 
-const resetAttemptState = (): void => {
+const resetAttemptState = (variation = 0): void => {
   activeSessionId = randomUUID();
   invocationStartedAt = performance.now();
+  activeVariation = variation;
   clearActiveTwin();
 };
 
@@ -296,8 +299,36 @@ const runTwinGeneration = async (
       cropDataUrl,
       coursePackId: "statics-2d-v1",
     },
+    { signal: lease.signal, variation: activeVariation },
+  );
+  await deliverTwinEvents(iterator, lease, target);
+};
+
+const runTwinRegeneration = async (
+  cropDataUrl: string,
+  signature: StructuralSignature,
+  twin: TwinRender,
+  variation: number,
+  target: BrowserWindow,
+): Promise<void> => {
+  cancelActiveIterator();
+  const lease = generation.begin(cropDataUrl);
+  const iterator = createTwinEngineFromEnv(process.env).regenerate(
+    {
+      signature,
+      evidence: twin.sourceRefs,
+      variation,
+    },
     { signal: lease.signal },
   );
+  await deliverTwinEvents(iterator, lease, target);
+};
+
+const deliverTwinEvents = async (
+  iterator: AsyncGenerator<TwinEvent>,
+  lease: GenerationLease,
+  target: BrowserWindow,
+): Promise<void> => {
   activeIterator = iterator;
   try {
     for await (const event of iterator) {
@@ -459,16 +490,32 @@ const recordOutcome = (outcome: RendererOutcome): void => {
 const regenerateTwin = (): void => {
   const target = sidecarWindow;
   const cropDataUrl = generation.cropForRegeneration();
-  if (!target || target.isDestroyed() || !cropDataUrl) {
+  const signature = activeSignature;
+  const twin = activeTwin;
+  if (
+    !target ||
+    target.isDestroyed() ||
+    !cropDataUrl ||
+    !signature ||
+    !twin
+  ) {
     throw new Error("The private crop session has expired. Capture again.");
   }
+  const variation = activeVariation + 1;
   recordOutcome("another_twin");
   if (mappingWindow && !mappingWindow.isDestroyed()) mappingWindow.close();
   mappingWindow = null;
   target.webContents.send("parallel:twin-reset");
-  resetAttemptState();
+  resetAttemptState(variation);
   void runGuarded(
-    () => runTwinGeneration(cropDataUrl, target),
+    () =>
+      runTwinRegeneration(
+        cropDataUrl,
+        signature,
+        twin,
+        variation,
+        target,
+      ),
     showUnexpectedFailure,
   );
 };

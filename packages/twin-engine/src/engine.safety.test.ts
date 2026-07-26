@@ -236,6 +236,56 @@ describe("live intelligence safety boundary", () => {
     expect(search).not.toHaveBeenCalled();
   });
 
+  it("regenerates a different verified twin from the abstract signature without reuploading the crop", async () => {
+    const parseStructure = vi.fn(async () => {
+      throw new Error("regeneration must not parse the crop");
+    });
+    const search = vi.fn(async () => {
+      throw new Error("regeneration must not repeat evidence search");
+    });
+    const engine = new TwinEngine({
+      structure: { parseStructure },
+      evidence: { search },
+      compiler: new DemoCompilerProvider(),
+    });
+    const collectVariation = async (variation: number) => {
+      const events: TwinEvent[] = [];
+      for await (const event of engine.regenerate({
+        signature: canonicalMomentSignature,
+        evidence: [],
+        variation,
+      })) {
+        events.push(event);
+      }
+      return events;
+    };
+
+    const first = await collectVariation(0);
+    const second = await collectVariation(1);
+    const firstComplete = first.find((event) => event.state === "complete");
+    const secondComplete = second.find((event) => event.state === "complete");
+
+    expect(first.map(({ state }) => state)).toEqual([
+      "reading",
+      "recognized",
+      "twin_step",
+      "twin_step",
+      "complete",
+    ]);
+    expect(firstComplete?.state).toBe("complete");
+    expect(secondComplete?.state).toBe("complete");
+    if (
+      firstComplete?.state === "complete" &&
+      secondComplete?.state === "complete"
+    ) {
+      expect(secondComplete.twin.twinStatement).not.toBe(
+        firstComplete.twin.twinStatement,
+      );
+    }
+    expect(parseStructure).not.toHaveBeenCalled();
+    expect(search).not.toHaveBeenCalled();
+  });
+
   it("rejects a schema-valid compiler result that tries to reveal an answer", async () => {
     const originalAnswer = "The original homework answer is 42 N·m";
     const maliciousCompiler = {

@@ -32,7 +32,7 @@ screens. Outside this command, a missing live recognition provider fails closed.
 Keyboard controls:
 
 - `M` — toggle mapping
-- `N` — request another twin outcome
+- `N` — generate a different verified twin from the same abstract structure
 - `U` — mark unlocked
 - `X` — mark wrong twin
 - `Esc` — dismiss
@@ -77,6 +77,8 @@ Optional model overrides:
 - Capture occurs only after explicit `Option+Space` invocation.
 - Only the in-memory lasso crop is submitted.
 - OpenAI requests use strict structured outputs and `store: false`.
+- Dismissal aborts an in-flight provider request, and regeneration works from
+  the abstract signature without uploading the crop again.
 - Exa receives only an abstract query, uses an exact teaching-domain allowlist,
   and is filtered again after response.
 - Compilation fails closed on pattern mismatch, confidence below `0.8`, or a
