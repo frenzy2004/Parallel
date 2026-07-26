@@ -4,13 +4,14 @@ import type {
   TwinRender,
 } from "@parallel/contracts";
 import type { TwinEvent } from "@parallel/contracts/events";
+import { compileVerifiedTwin } from "@parallel/statics-patterns";
 import { createTwinEngineFromEnv, TwinEngine } from "../engine.js";
 import { ExaEvidenceProvider } from "./exa.js";
 import { OpenAITwinProvider } from "./openai.js";
 
 const secretCrop = "data:image/png;base64,c2VjcmV0LXN0dWRlbnQtd29yaw==";
 const safeQuery =
-  "introductory 2D statics worked example moment equilibrium counter-clockwise positive";
+  "introductory 2D statics worked example moment about point counter-clockwise positive";
 
 const signature: StructuralSignature = {
   domain: "statics_2d",
@@ -126,7 +127,16 @@ describe("provider privacy boundaries", () => {
       responses: {
         parse: vi.fn(async (request: unknown) => {
           calls.push(request);
-          return { output_parsed: calls.length === 1 ? signature : twin };
+          return {
+            output_parsed:
+              calls.length === 1
+                ? {
+                    patternId: "moment_about_point",
+                    confidence: 0.96,
+                    hasSufficientContext: true,
+                  }
+                : twin,
+          };
         }),
       },
     };
@@ -218,8 +228,8 @@ describe("provider privacy boundaries", () => {
       structure: { parseStructure: async () => signature },
       evidence: { search: async () => [evidence] },
       compiler: {
-        compileTwin: async () => ({
-          ...twin,
+        compileTwin: async (receivedSignature, _evidence, seed) => ({
+          ...compileVerifiedTwin(receivedSignature, seed),
           sourceRefs: [
             {
               title: "Invented",
