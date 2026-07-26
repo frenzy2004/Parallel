@@ -1,5 +1,10 @@
 # PARALLEL Landing Page Implementation Plan
 
+> [!WARNING]
+> Superseded on 2026-07-26 by the production Next.js workspace in `apps/web`
+> and its Vercel workflow in the root `README.md`. Do not execute this archived
+> Sites/vinext/D1 plan; it is retained only as product-history context.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Publish a conversion-focused PARALLEL landing page that explains the paid 2D Statics pilot in under two minutes and durably records course-fit reservations.

@@ -10,7 +10,7 @@
     "start": "next start",
     "pretest": "pnpm -w build:shared",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@parallel/contracts": "workspace:*",
