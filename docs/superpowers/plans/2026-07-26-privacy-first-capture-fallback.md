@@ -38,7 +38,7 @@ through a window with a non-zero screen origin.
 
 - [ ] **Step 2: Run tests and verify red**
 
-Run: `npm test -- apps/desktop/src/capture/import-image.test.ts`
+Run: `pnpm test -- apps/desktop/src/capture/import-image.test.ts`
 
 Expected: FAIL because `import-image.ts` does not exist.
 
@@ -49,7 +49,7 @@ finite preview-to-screen geometry. Do not inspect or expose filesystem paths.
 
 - [ ] **Step 4: Run tests and verify green**
 
-Run: `npm test -- apps/desktop/src/capture/import-image.test.ts`
+Run: `pnpm test -- apps/desktop/src/capture/import-image.test.ts`
 
 Expected: PASS.
 
@@ -74,7 +74,7 @@ button behavior for dismiss/settings.
 
 - [ ] **Step 2: Run tests and verify red**
 
-Run: `npm test -- apps/desktop/src/capture/ScreenshotImport.test.tsx`
+Run: `pnpm test -- apps/desktop/src/capture/ScreenshotImport.test.tsx`
 
 Expected: FAIL because the component does not exist.
 
@@ -88,7 +88,7 @@ the learner actually imported.
 
 - [ ] **Step 4: Run component tests and verify green**
 
-Run: `npm test -- apps/desktop/src/capture/ScreenshotImport.test.tsx`
+Run: `pnpm test -- apps/desktop/src/capture/ScreenshotImport.test.tsx`
 
 Expected: PASS.
 
@@ -113,7 +113,7 @@ view on an attacker origin/path is rejected.
 
 - [ ] **Step 2: Run runtime-guard tests and verify red**
 
-Run: `npm test -- apps/desktop/electron/runtime-guard.test.ts`
+Run: `pnpm test -- apps/desktop/electron/runtime-guard.test.ts`
 
 Expected: FAIL because `import` is not an allowed view.
 
@@ -128,7 +128,7 @@ private session.
 
 - [ ] **Step 4: Run focused desktop tests and typecheck**
 
-Run: `npm test -- apps/desktop && npm run typecheck -w @parallel/desktop`
+Run: `pnpm test -- apps/desktop && pnpm --filter @parallel/desktop typecheck`
 
 Expected: PASS.
 
@@ -148,15 +148,15 @@ accepted formats/limit, and the one-click lasso benefit.
 
 - [ ] **Step 2: Run complete verification**
 
-Run: `npm test`
+Run: `pnpm test`
 
-Run: `npm run typecheck`
+Run: `pnpm typecheck`
 
-Run: `npm run build`
+Run: `pnpm build`
 
-Run: `npm run evaluate`
+Run: `pnpm evaluate`
 
-Run: `npm run verify`
+Run: `pnpm verify`
 
 Run: `node scripts/probe-electron-runtime.mjs`
 

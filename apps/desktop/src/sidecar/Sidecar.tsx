@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { JSX } from "react";
 import type { Precedent } from "@parallel/contracts";
 import type { TwinEvent } from "@parallel/contracts/events";
 import type { NormalizedRegion } from "@parallel/contracts";

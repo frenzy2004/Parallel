@@ -35,7 +35,7 @@ const directory = mkdtempSync(join(tmpdir(), "parallel-live-smoke-"));
 const imagePath = join(directory, "statics-fixture.png");
 try {
   console.log("status=rendering_fixture");
-  const electronPath = resolve("node_modules/.bin/electron");
+  const electronPath = resolve("apps/desktop/node_modules/.bin/electron");
   const render = spawnSync(
     electronPath,
     [resolve("scripts/capture-fixture.cjs"), imagePath],

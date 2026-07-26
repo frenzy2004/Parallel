@@ -4,19 +4,41 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/engine.ts",
-    "./providers": "./src/providers/types.ts",
-    "./providers/openai": "./src/providers/openai.ts",
-    "./providers/exa": "./src/providers/exa.ts",
-    "./providers/demo": "./src/providers/demo.ts"
+    ".": {
+      "types": "./src/engine.ts",
+      "import": "./dist/engine.js",
+      "default": "./dist/engine.js"
+    },
+    "./providers": {
+      "types": "./src/providers/types.ts",
+      "import": "./dist/providers/types.js",
+      "default": "./dist/providers/types.js"
+    },
+    "./providers/openai": {
+      "types": "./src/providers/openai.ts",
+      "import": "./dist/providers/openai.js",
+      "default": "./dist/providers/openai.js"
+    },
+    "./providers/exa": {
+      "types": "./src/providers/exa.ts",
+      "import": "./dist/providers/exa.js",
+      "default": "./dist/providers/exa.js"
+    },
+    "./providers/demo": {
+      "types": "./src/providers/demo.ts",
+      "import": "./dist/providers/demo.js",
+      "default": "./dist/providers/demo.js"
+    }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "pretest": "pnpm --filter @parallel/contracts build && pnpm --filter @parallel/statics-patterns build",
     "test": "vitest run src",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@parallel/contracts": "0.1.0",
-    "@parallel/statics-patterns": "0.1.0",
+    "@parallel/contracts": "workspace:*",
+    "@parallel/statics-patterns": "workspace:*",
     "openai": "^5.22.0",
     "zod": "^3.24.1"
   }
