@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Precedent } from "@parallel/contracts";
 import type { TwinEvent } from "@parallel/contracts/events";
+
+export interface PrecedentMatchView {
+  precedent: Precedent;
+  score: number;
+}
 
 interface SidecarProps {
   events: TwinEvent[];
   onDismiss(): void;
   onMap?(anchorIds: string[]): void;
-  onOutcome?(outcome: "unlocked" | "wrong_twin" | "another_twin"): void;
+  onOutcome?(outcome: "unlocked" | "wrong_twin"): void;
+  onAnother?(): void;
+  precedentMatch?: PrecedentMatchView | null;
+  onPrecedentFeedback?(): void;
 }
 
 const announcementFor = (event: TwinEvent | undefined): string => {
@@ -33,6 +42,9 @@ export function Sidecar({
   onDismiss,
   onMap = () => undefined,
   onOutcome = () => undefined,
+  onAnother,
+  precedentMatch = null,
+  onPrecedentFeedback = () => undefined,
 }: SidecarProps): JSX.Element {
   const [mappingVisible, setMappingVisible] = useState(false);
   const current = events.at(-1);
@@ -58,13 +70,13 @@ export function Sidecar({
       const key = event.key.toLowerCase();
       if (key === "escape") onDismiss();
       if (key === "m") toggleMapping();
-      if (key === "n") onOutcome("another_twin");
+      if (key === "n") onAnother?.();
       if (key === "u") onOutcome("unlocked");
       if (key === "x") onOutcome("wrong_twin");
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onDismiss, onOutcome, toggleMapping]);
+  }, [onAnother, onDismiss, onOutcome, toggleMapping]);
 
   return (
     <main className="sidecar-shell">
@@ -82,6 +94,17 @@ export function Sidecar({
           <div className="eyebrow">Pattern</div>
           <h1>{recognized.label}</h1>
         </section>
+      ) : null}
+      {recognized?.state === "recognized" && precedentMatch ? (
+        <aside className="precedent-card" aria-label="Personal Precedent">
+          <div>
+            <div className="eyebrow">Personal Precedent</div>
+            <strong>Same shape</strong>
+            <span>{Math.round(precedentMatch.score * 100)}% structural match</span>
+          </div>
+          <p>{precedentMatch.precedent.mappingSummary}</p>
+          <button onClick={onPrecedentFeedback}>Not same</button>
+        </aside>
       ) : null}
       {complete?.state === "complete" ? (
         <section>
@@ -108,8 +131,9 @@ export function Sidecar({
           <button onClick={toggleMapping}>
             Map <kbd>M</kbd>
           </button>
-          <button onClick={() => onOutcome("another_twin")}>
-            Another <kbd>N</kbd>
+          <button onClick={onAnother} disabled={!onAnother}>
+            {onAnother ? "Regenerate" : "Regeneration unavailable"}{" "}
+            <kbd>N</kbd>
           </button>
           <button className="primary" onClick={() => onOutcome("unlocked")}>
             Unlocked <kbd>U</kbd>

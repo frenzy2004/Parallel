@@ -95,4 +95,51 @@ describe("Sidecar", () => {
     fireEvent.click(screen.getByRole("button", { name: /map/i }));
     expect(onMap).toHaveBeenLastCalledWith([]);
   });
+
+  it("requests a real regeneration from the active session", () => {
+    const onAnother = vi.fn();
+    render(
+      <Sidecar
+        events={events}
+        onDismiss={() => undefined}
+        onAnother={onAnother}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /regenerate/i }));
+    fireEvent.keyDown(window, { key: "n" });
+
+    expect(onAnother).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a matched Personal Precedent and accepts Not same feedback", () => {
+    const onPrecedentFeedback = vi.fn();
+    render(
+      <Sidecar
+        events={[recognizedEvent]}
+        onDismiss={() => undefined}
+        precedentMatch={{
+          score: 0.96,
+          precedent: {
+            signatureHash: "sha256:precedent",
+            patternId: "moment_about_point",
+            mappingSummary: "bracket force ↔ original force",
+            twinStyle: "moment_about_point:sign-bracket",
+            outcome: "unlocked",
+            laterTransferOutcome: null,
+            createdAt: "2026-07-26T08:00:00.000Z",
+          },
+        }}
+        onPrecedentFeedback={onPrecedentFeedback}
+      />,
+    );
+
+    expect(screen.getByText("Same shape")).toBeInTheDocument();
+    expect(
+      screen.getByText("bracket force ↔ original force"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /not same/i }));
+    expect(onPrecedentFeedback).toHaveBeenCalledOnce();
+  });
 });

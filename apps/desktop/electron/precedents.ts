@@ -133,6 +133,22 @@ export class PrecedentStore {
     return best;
   }
 
+  recordMatchFeedback(
+    input: StructuralSignature,
+    outcome: "not_same",
+  ): boolean {
+    const match = this.matchPrecedent(input);
+    if (!match) return false;
+    const result = this.database
+      .prepare(
+        `UPDATE precedents
+         SET outcome = ?, later_transfer_outcome = ?
+         WHERE signature_hash = ?`,
+      )
+      .run(outcome, outcome, match.precedent.signatureHash);
+    return result.changes === 1;
+  }
+
   close(): void {
     this.database.close();
   }
@@ -181,3 +197,9 @@ export const recordPrecedentOutcome = (
     twin,
     outcome: outcome === "unlocked" ? "unlocked" : "wrong_twin",
   });
+
+export const recordPrecedentFeedback = (
+  store: PrecedentStore,
+  signature: StructuralSignature,
+  outcome: "not_same",
+): boolean => store.recordMatchFeedback(signature, outcome);
