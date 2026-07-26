@@ -43,19 +43,41 @@ export const compileVerifiedTwin = (
   }
 
   const pattern = getPattern(signature.patternId);
+  const expectedAnchorIds = Object.keys(linkedStepIds[signature.patternId]);
+  const receivedAnchorIds = signature.originalAnchorRegions.map(
+    ({ anchorId }) => anchorId,
+  );
+  if (
+    receivedAnchorIds.length !== expectedAnchorIds.length ||
+    !expectedAnchorIds.every((anchorId) =>
+      receivedAnchorIds.includes(anchorId),
+    )
+  ) {
+    throw new Error("Signature anchors cannot join the verified mapping");
+  }
   const workedSteps = pattern.generateWorkedSteps(seed);
   const validStepIds = new Set(workedSteps.map((step) => step.id));
+  const mappingEdges = pattern
+    .generateMappingAnchors()
+    .filter((edge) => expectedAnchorIds.includes(edge.originalAnchorId))
+    .map((edge) => ({
+      ...edge,
+      workedStepIds:
+        linkedStepIds[signature.patternId][edge.originalAnchorId]?.filter(
+          (stepId) => validStepIds.has(stepId),
+        ) ?? [],
+    }));
+  if (
+    mappingEdges.length !== expectedAnchorIds.length ||
+    mappingEdges.some(({ workedStepIds }) => workedStepIds.length === 0)
+  ) {
+    throw new Error("Verified mapping is incomplete");
+  }
   return TwinRenderSchema.parse({
     patternId: pattern.id,
     twinStatement: pattern.generateSurface(seed),
     workedSteps,
-    mappingEdges: pattern.generateMappingAnchors().map((edge) => ({
-      ...edge,
-      workedStepIds: (
-        linkedStepIds[signature.patternId][edge.originalAnchorId] ??
-        workedSteps.map((step) => step.id)
-      ).filter((stepId) => validStepIds.has(stepId)),
-    })),
+    mappingEdges,
     sourceRefs: [],
     difficultyDelta: 0,
     answerLeak: false,

@@ -13,6 +13,15 @@ import type {
   GeneratedStaticsCase,
 } from "./types.js";
 
+const originalAnchors: Record<StaticsPatternId, string[]> = {
+  concurrent_force_equilibrium: ["force-intersection"],
+  resultant_coplanar_forces: ["force-system"],
+  moment_about_point: ["moment-center", "force-line"],
+  rigid_body_equilibrium_2d: ["pin-support", "tension-member"],
+  couple_moments: ["opposite-force-pair"],
+  equivalent_distributed_load: ["distributed-load", "load-centroid"],
+};
+
 const makeSignature = (patternId: StaticsPatternId): StructuralSignature =>
   StructuralSignatureSchema.parse({
     domain: "statics_2d",
@@ -29,12 +38,17 @@ const makeSignature = (patternId: StaticsPatternId): StructuralSignature =>
     missingContext: [],
     confidence: 0.97,
     exaQuery: `introductory 2D statics worked example ${patternId}`,
-    originalAnchorRegions: [
-      {
-        anchorId: "problem-feature",
-        region: { x: 0.2, y: 0.2, width: 0.6, height: 0.6 },
-      },
-    ],
+    originalAnchorRegions: originalAnchors[patternId].map(
+      (anchorId, index, anchors) => ({
+        anchorId,
+        region: {
+          x: 0.05 + index / anchors.length,
+          y: 0.2,
+          width: 0.4,
+          height: 0.6,
+        },
+      }),
+    ),
   });
 
 const momentSignature = makeSignature("moment_about_point");
@@ -147,6 +161,7 @@ describe("verified Statics compiler", () => {
   it("generates a schema-valid render for every pattern", () => {
     for (const patternId of StaticsPatternIdSchema.options) {
       const twin = compileVerifiedTwin(makeSignature(patternId), 19);
+      const signature = makeSignature(patternId);
       expect(() => TwinRenderSchema.parse(twin)).not.toThrow();
       expect(twin).not.toHaveProperty("originalAnswer");
       expect(twin.mappingEdges.length).toBeGreaterThan(0);
@@ -157,7 +172,30 @@ describe("verified Statics compiler", () => {
           edge.workedStepIds?.every((stepId) => stepIds.has(stepId)),
         ).toBe(true);
       }
+      expect(
+        twin.mappingEdges.map(({ originalAnchorId }) => originalAnchorId).sort(),
+      ).toEqual(
+        signature.originalAnchorRegions
+          .map(({ anchorId }) => anchorId)
+          .sort(),
+      );
     }
+  });
+
+  it("fails closed when original regions cannot join every mapping edge", () => {
+    const signature = StructuralSignatureSchema.parse({
+      ...makeSignature("moment_about_point"),
+      originalAnchorRegions: [
+        {
+          anchorId: "unrecognized-feature",
+          region: { x: 0.2, y: 0.2, width: 0.6, height: 0.6 },
+        },
+      ],
+    });
+
+    expect(() => compileVerifiedTwin(signature, 19)).toThrow(
+      /anchor|mapping/i,
+    );
   });
 
   it("publishes closed, numerically solved cases with no unused bounds", () => {

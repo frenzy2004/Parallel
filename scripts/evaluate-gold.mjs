@@ -13,6 +13,15 @@ const cases = JSON.parse(
   ),
 );
 
+const originalAnchors = {
+  concurrent_force_equilibrium: ["force-intersection"],
+  resultant_coplanar_forces: ["force-system"],
+  moment_about_point: ["moment-center", "force-line"],
+  rigid_body_equilibrium_2d: ["pin-support", "tension-member"],
+  couple_moments: ["opposite-force-pair"],
+  equivalent_distributed_load: ["distributed-load", "load-centroid"],
+};
+
 if (!Array.isArray(cases) || cases.length !== 100) {
   console.error("Synthetic preflight failed: expected exactly 100 cases.");
   process.exit(1);
@@ -31,12 +40,17 @@ const results = cases.map((goldCase) => {
     missingContext: [],
     confidence: 0.98,
     exaQuery: `introductory 2D statics worked example ${goldCase.expectedPattern}`,
-    originalAnchorRegions: [
-      {
-        anchorId: "problem-feature",
-        region: { x: 0.2, y: 0.2, width: 0.6, height: 0.6 },
-      },
-    ],
+    originalAnchorRegions: originalAnchors[goldCase.expectedPattern].map(
+      (anchorId, index, anchors) => ({
+        anchorId,
+        region: {
+          x: 0.05 + index / anchors.length,
+          y: 0.2,
+          width: 0.4,
+          height: 0.6,
+        },
+      }),
+    ),
   });
   const startedAt = performance.now();
   const twin = compileVerifiedTwin(signature, goldCase.seed);
