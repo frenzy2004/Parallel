@@ -115,7 +115,7 @@ export class DesktopTwinBudgetAuthority {
   authorizeFreshRecognition(
     env: Record<string, string | undefined>,
   ): TwinStartDecision {
-    if (!env.OPENAI_API_KEY?.trim()) {
+    if (!env.OPENAI_API_KEY) {
       return {
         allowed: true,
         charged: false,

@@ -108,8 +108,9 @@ Optional model overrides:
   and is filtered again after response.
 - Compilation fails closed on pattern mismatch, confidence below `0.8`, or a
   non-null rejection reason.
-- Personal Precedents store an abstract signature, mapping summary, twin style,
-  and outcome—never screenshot bytes or raw OCR.
+- Personal Precedents store an abstract signature, schema-valid deterministic
+  twin, mapping summary, twin style, and outcome—never screenshot bytes, raw
+  OCR, or original-screen geometry.
 - `wrong_twin`, `not_same`, and `another_twin` suppress reuse.
 
 The Electron main process saves the active abstract precedent when `Unlocked`

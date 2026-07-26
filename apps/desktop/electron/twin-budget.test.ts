@@ -196,6 +196,22 @@ describe("persistent Electron paid-recognition budget", () => {
     budget.close();
   });
 
+  it("charges every non-empty key exactly as the provider factory treats it", () => {
+    const budget = new PersistentRollingTwinBudget(createDatabasePath(), {
+      limit: 1,
+      now: () => 4_550_000,
+    });
+    const authority = new DesktopTwinBudgetAuthority(budget);
+
+    expect(
+      authority.authorizeFreshRecognition({ OPENAI_API_KEY: " " }),
+    ).toMatchObject({ allowed: true, charged: true, remaining: 0 });
+    expect(
+      authority.authorizeFreshRecognition({ OPENAI_API_KEY: " " }),
+    ).toMatchObject({ allowed: false, charged: false, remaining: 0 });
+    budget.close();
+  });
+
   it("runs abstract regeneration without consuming a paid slot", async () => {
     const budget = new PersistentRollingTwinBudget(createDatabasePath(), {
       limit: 1,

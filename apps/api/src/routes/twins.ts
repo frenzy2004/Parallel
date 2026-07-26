@@ -16,9 +16,13 @@ export const createTwinRoutes = (
     const crop = form.get("crop");
     const coursePackId = form.get("coursePackId");
     const attemptContext = form.get("attemptContext");
+    const precedentId = form.get("precedentId");
 
     if (!(crop instanceof File) || typeof coursePackId !== "string") {
       return context.json({ error: "invalid_request" }, 400);
+    }
+    if (precedentId !== null) {
+      return context.json({ error: "precedent_reopen_not_supported" }, 400);
     }
     if (!ALLOWED_CROP_TYPES.has(crop.type)) {
       return context.json({ error: "unsupported_crop_type" }, 415);
