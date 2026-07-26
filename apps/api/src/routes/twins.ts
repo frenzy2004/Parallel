@@ -16,7 +16,6 @@ export const createTwinRoutes = (
     const crop = form.get("crop");
     const coursePackId = form.get("coursePackId");
     const attemptContext = form.get("attemptContext");
-    const precedentId = form.get("precedentId");
 
     if (!(crop instanceof File) || typeof coursePackId !== "string") {
       return context.json({ error: "invalid_request" }, 400);
@@ -28,9 +27,7 @@ export const createTwinRoutes = (
       return context.json({ error: "crop_too_large" }, 413);
     }
     if (
-      !budget.tryConsume({
-        precedentReopen: typeof precedentId === "string" && precedentId.length > 0,
-      })
+      !budget.tryConsumeFresh()
     ) {
       return context.json({ error: "monthly_fresh_twin_budget_exhausted" }, 429);
     }

@@ -8,10 +8,7 @@ export class RollingTwinBudget {
     private readonly now: () => number = Date.now,
   ) {}
 
-  tryConsume(options: { precedentReopen: boolean }): boolean {
-    if (options.precedentReopen) {
-      return true;
-    }
+  tryConsumeFresh(): boolean {
     const cutoff = this.now() - ROLLING_MONTH_MS;
     while (
       this.freshTwinTimestamps[0] !== undefined &&

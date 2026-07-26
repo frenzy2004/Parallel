@@ -197,4 +197,23 @@ describe("Personal Precedents", () => {
     expect(store.matchPrecedent(signature)).toBeNull();
     store.close();
   });
+
+  it("reopens only an exact, unlocked precedent that has a stored safe twin", () => {
+    const store = new PrecedentStore(createDatabasePath());
+    const saved = store.savePrecedent({
+      signature,
+      twin,
+      outcome: "unlocked",
+    });
+
+    expect(store.reopenEligibleTwin(saved.signatureHash)).toEqual({
+      precedent: saved,
+      twin,
+    });
+    expect(store.reopenEligibleTwin("sha256:not-the-saved-id")).toBeNull();
+
+    recordPrecedentOutcome(store, signature, twin, "wrong_twin");
+    expect(store.reopenEligibleTwin(saved.signatureHash)).toBeNull();
+    store.close();
+  });
 });

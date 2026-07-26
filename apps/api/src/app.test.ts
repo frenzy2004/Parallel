@@ -63,7 +63,7 @@ describe("local twin API", () => {
     expect(body).not.toMatch(/original(?:_|)answer/i);
   });
 
-  it("enforces 100 fresh twins but does not charge precedent reopens", async () => {
+  it("does not trust a caller-supplied precedent ID to bypass the fresh-twin budget", async () => {
     const budget = new RollingTwinBudget(1);
     const app = createDemoApp(budget);
 
@@ -84,7 +84,10 @@ describe("local twin API", () => {
 
     expect(first.status).toBe(200);
     expect(blocked.status).toBe(429);
-    expect(reopened.status).toBe(200);
+    expect(reopened.status).toBe(429);
+    expect(await reopened.json()).toEqual({
+      error: "monthly_fresh_twin_budget_exhausted",
+    });
   });
 
   it("exposes health, outcomes, abstract matching, and course pack metadata", async () => {

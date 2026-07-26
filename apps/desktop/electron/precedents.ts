@@ -29,6 +29,7 @@ interface SavePrecedentInput {
 interface PrecedentRow {
   signature_hash: string;
   signature_json: string;
+  twin_json: string | null;
   pattern_id: string;
   mapping_summary: string;
   twin_style: string;
@@ -40,6 +41,11 @@ interface PrecedentRow {
 export interface PrecedentMatch {
   precedent: Precedent;
   score: number;
+}
+
+export interface EligiblePrecedentTwin {
+  precedent: Precedent;
+  twin: TwinRender;
 }
 
 export class PrecedentStore {
@@ -54,6 +60,7 @@ export class PrecedentStore {
       CREATE TABLE IF NOT EXISTS precedents (
         signature_hash TEXT PRIMARY KEY,
         signature_json TEXT NOT NULL,
+        twin_json TEXT,
         pattern_id TEXT NOT NULL,
         mapping_summary TEXT NOT NULL,
         twin_style TEXT NOT NULL,
@@ -64,6 +71,13 @@ export class PrecedentStore {
       CREATE INDEX IF NOT EXISTS precedents_pattern_outcome
         ON precedents(pattern_id, outcome);
     `);
+    const columns = this.database
+      .prepare("PRAGMA table_info(precedents)")
+      .all()
+      .map((column) => (column as { name: string }).name);
+    if (!columns.includes("twin_json")) {
+      this.database.exec("ALTER TABLE precedents ADD COLUMN twin_json TEXT");
+    }
   }
 
   savePrecedent(input: SavePrecedentInput): Precedent {
@@ -86,13 +100,16 @@ export class PrecedentStore {
     this.database
       .prepare(
         `INSERT INTO precedents (
-          signature_hash, signature_json, pattern_id, mapping_summary,
-          twin_style, outcome, later_transfer_outcome, created_at
+          signature_hash, signature_json, twin_json, pattern_id,
+          mapping_summary, twin_style, outcome, later_transfer_outcome,
+          created_at
         ) VALUES (
-          @signatureHash, @signatureJson, @patternId, @mappingSummary,
-          @twinStyle, @outcome, @laterTransferOutcome, @createdAt
+          @signatureHash, @signatureJson, @twinJson, @patternId,
+          @mappingSummary, @twinStyle, @outcome, @laterTransferOutcome,
+          @createdAt
         )
         ON CONFLICT(signature_hash) DO UPDATE SET
+          twin_json = excluded.twin_json,
           mapping_summary = excluded.mapping_summary,
           twin_style = excluded.twin_style,
           outcome = excluded.outcome,
@@ -102,6 +119,7 @@ export class PrecedentStore {
       .run({
         ...precedent,
         signatureJson: JSON.stringify(persistedSignature),
+        twinJson: JSON.stringify(twin),
       });
     return precedent;
   }
@@ -142,6 +160,34 @@ export class PrecedentStore {
       }
     }
     return best;
+  }
+
+  reopenEligibleTwin(signatureHash: string): EligiblePrecedentTwin | null {
+    const row = this.database
+      .prepare(
+        `SELECT * FROM precedents
+         WHERE signature_hash = ?
+           AND outcome = 'unlocked'
+           AND twin_json IS NOT NULL`,
+      )
+      .get(signatureHash) as PrecedentRow | undefined;
+    if (!row?.twin_json) return null;
+    try {
+      return {
+        precedent: PrecedentSchema.parse({
+          signatureHash: row.signature_hash,
+          patternId: row.pattern_id,
+          mappingSummary: row.mapping_summary,
+          twinStyle: row.twin_style,
+          outcome: row.outcome,
+          laterTransferOutcome: row.later_transfer_outcome,
+          createdAt: row.created_at,
+        }),
+        twin: TwinRenderSchema.parse(JSON.parse(row.twin_json)),
+      };
+    } catch {
+      return null;
+    }
   }
 
   recordMatchFeedback(
