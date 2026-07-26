@@ -721,6 +721,9 @@ const initializeDesktop = async (): Promise<void> => {
   const nativeBinding = join(app.getAppPath(), "native", "better_sqlite3.node");
   telemetry = new TelemetryStore(databasePath, nativeBinding);
   precedents = new PrecedentStore(databasePath, nativeBinding);
+  telemetry.assertReady();
+  precedents.assertReady();
+  console.log("parallel_runtime_ready telemetry=ok precedents=ok");
 
   const registered = globalShortcut.register("Alt+Space", () => {
     void runGuarded(openCapture, showUnexpectedFailure);

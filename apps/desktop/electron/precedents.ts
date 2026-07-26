@@ -220,6 +220,15 @@ export class PrecedentStore {
     return result.changes === 1;
   }
 
+  assertReady(): void {
+    const result = this.database
+      .prepare("SELECT 1 AS ready")
+      .get() as { ready?: unknown } | undefined;
+    if (result?.ready !== 1) {
+      throw new Error("Precedent store readiness query failed.");
+    }
+  }
+
   close(): void {
     this.database.close();
   }
