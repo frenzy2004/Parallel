@@ -15,8 +15,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@parallel/contracts": "0.1.0",
-    "@parallel/statics-patterns": "0.1.0",
+    "@parallel/contracts": "workspace:*",
+    "@parallel/statics-patterns": "workspace:*",
     "openai": "^5.22.0",
     "zod": "^3.24.1"
   }

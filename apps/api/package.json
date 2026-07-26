@@ -10,8 +10,8 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@parallel/contracts": "0.1.0",
-    "@parallel/twin-engine": "0.1.0",
+    "@parallel/contracts": "workspace:*",
+    "@parallel/twin-engine": "workspace:*",
     "hono": "^4.8.12"
   }
 }

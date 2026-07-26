@@ -3,9 +3,14 @@
 node_modules/
 dist/
 dist-electron/
+.next/
+.vercel/
+coverage/
+*.tsbuildinfo
 apps/desktop/native/
 .env
 .env.local
+.env*.local
 *.log
 *.tar.gz
 .DS_Store

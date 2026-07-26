@@ -12,6 +12,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@parallel/contracts": "0.1.0"
+    "@parallel/contracts": "workspace:*"
   }
 }

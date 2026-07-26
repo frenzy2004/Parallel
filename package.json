@@ -3,15 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
     "test": "vitest run",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
-    "demo": "npm run build -w @parallel/desktop && node scripts/run-demo.mjs",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "build": "pnpm -r --if-present build",
+    "demo": "pnpm --filter @parallel/desktop build && node scripts/run-demo.mjs",
+    "dev:web": "pnpm --filter @parallel/web dev",
     "evaluate": "tsx scripts/evaluate-gold.mjs",
     "verify": "tsx scripts/verify-privacy.mjs",
     "smoke:live": "tsx scripts/smoke-live.mjs"
