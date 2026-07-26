@@ -1,0 +1,12 @@
+.worktrees/
+.superpowers/
+node_modules/
+dist/
+.env
+.env.local
+*.log
+*.tar.gz
+.DS_Store
+site/.vinext/
+site/.wrangler/
+work/**/node_modules
