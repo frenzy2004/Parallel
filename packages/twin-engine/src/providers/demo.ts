@@ -43,7 +43,7 @@ export class DemoEvidenceProvider implements EvidenceProvider {
   }
 }
 
-export class DemoCompilerProvider implements CompilerProvider {
+export class VerifiedCompilerProvider implements CompilerProvider {
   async compileTwin(
     signature: StructuralSignature,
     evidence: SourceRef[],
@@ -55,3 +55,5 @@ export class DemoCompilerProvider implements CompilerProvider {
     });
   }
 }
+
+export class DemoCompilerProvider extends VerifiedCompilerProvider {}

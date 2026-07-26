@@ -1,11 +1,13 @@
 import {
-  StructuralSignatureSchema,
+  StaticsPatternIdSchema,
   TwinRenderSchema,
   type SourceRef,
   type StructuralSignature,
   type TwinRender,
 } from "@parallel/contracts";
 import { zodTextFormat } from "openai/helpers/zod";
+import { z } from "zod";
+import { buildCanonicalSignature } from "../canonical-patterns.js";
 import type { CompilerProvider, StructureProvider } from "./types.js";
 
 interface ResponsesClient {
@@ -20,10 +22,18 @@ interface OpenAIProviderOptions {
 }
 
 const PARSER_SYSTEM_PROMPT =
-  "Classify only 2D Statics. Extract an abstract structural signature. Never infer or return the original final answer. Missing or low-confidence context must be explicit. Produce a privacy-safe conceptual Exa query.";
+  "Classify the image into one allowlisted 2D Statics pattern. Return only the pattern ID, confidence, and whether the visible context is sufficient. Never transcribe OCR, names, identifiers, problem prose, numerical values, queries, or answers.";
 
 const COMPILER_SYSTEM_PROMPT =
   "Create a fully worked structural twin with different surface details. Preserve the declared Statics invariant and course convention. Never solve, quote, or include the original final answer. Return strict structured data only.";
+
+const RecognitionResultSchema = z
+  .object({
+    patternId: StaticsPatternIdSchema,
+    confidence: z.number().min(0).max(1),
+    hasSufficientContext: z.boolean(),
+  })
+  .strict();
 
 export class OpenAITwinProvider implements StructureProvider, CompilerProvider {
   private readonly recognitionModel: string;
@@ -53,7 +63,7 @@ export class OpenAITwinProvider implements StructureProvider, CompilerProvider {
       store: false,
       reasoning: { effort: "low" },
       text: {
-        format: zodTextFormat(StructuralSignatureSchema, "structural_signature"),
+        format: zodTextFormat(RecognitionResultSchema, "statics_classification"),
       },
       input: [
         {
@@ -76,7 +86,17 @@ export class OpenAITwinProvider implements StructureProvider, CompilerProvider {
         },
       ],
     });
-    return StructuralSignatureSchema.parse(response.output_parsed);
+    const classification = RecognitionResultSchema.parse(response.output_parsed);
+    const signature = buildCanonicalSignature(
+      classification.patternId,
+      classification.confidence,
+    );
+    return classification.hasSufficientContext
+      ? signature
+      : {
+          ...signature,
+          missingContext: ["insufficient visible context"],
+        };
   }
 
   async compileTwin(

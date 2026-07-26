@@ -5,10 +5,12 @@ import {
   type TwinRequest,
 } from "@parallel/contracts";
 import type { TwinEvent } from "@parallel/contracts/events";
+import { compileVerifiedTwin } from "@parallel/statics-patterns";
+import { canonicalizeSignature } from "./canonical-patterns.js";
 import {
-  DemoCompilerProvider,
   DemoEvidenceProvider,
   DemoStructureProvider,
+  VerifiedCompilerProvider,
 } from "./providers/demo.js";
 import { ExaEvidenceProvider } from "./providers/exa.js";
 import {
@@ -24,20 +26,19 @@ export class TwinEngine {
     const request = TwinRequestSchema.parse(input);
     yield { state: "reading" };
     try {
-      const signature = await this.providers.structure.parseStructure(
+      const recognized = await this.providers.structure.parseStructure(
         request.cropDataUrl,
         request.coursePackId,
         request.attemptContext,
       );
-      if (signature.missingContext.length > 0 || signature.confidence < 0.8) {
+      if (recognized.missingContext.length > 0 || recognized.confidence < 0.8) {
         yield {
           state: "recapture",
-          reason:
-            signature.missingContext[0] ??
-            "Selection confidence is too low. Widen the lasso.",
+          reason: "Selection is incomplete. Widen the lasso and try again.",
         };
         return;
       }
+      const signature = canonicalizeSignature(recognized);
 
       yield {
         state: "recognized",
@@ -55,11 +56,8 @@ export class TwinEngine {
           seed,
         ),
       );
-      if (
-        compiledTwin.patternId !== signature.patternId ||
-        compiledTwin.confidence < 0.8 ||
-        compiledTwin.rejectionReason !== null
-      ) {
+      const verifiedTwin = compileVerifiedTwin(signature, seed);
+      if (!matchesVerifiedTwin(compiledTwin, verifiedTwin)) {
         throw new Error("Compiled twin failed the structural safety gate");
       }
       const twin = TwinRenderSchema.parse({
@@ -85,13 +83,13 @@ export const createTwinEngineFromEnv = (
 ): TwinEngine => {
   const demoStructure = new DemoStructureProvider();
   const demoEvidence = new DemoEvidenceProvider();
-  const demoCompiler = new DemoCompilerProvider();
+  const verifiedCompiler = new VerifiedCompilerProvider();
 
   if (!env.OPENAI_API_KEY) {
     return new TwinEngine({
       structure: demoStructure,
       evidence: demoEvidence,
-      compiler: demoCompiler,
+      compiler: verifiedCompiler,
     });
   }
 
@@ -115,7 +113,7 @@ export const createTwinEngineFromEnv = (
     evidence: env.EXA_API_KEY
       ? new ExaEvidenceProvider(env.EXA_API_KEY, fetchImpl)
       : demoEvidence,
-    compiler: openaiProvider,
+    compiler: verifiedCompiler,
   });
 };
 
@@ -136,5 +134,12 @@ const isAllowlistedSource = (source: { url: string }): boolean => {
     return false;
   }
 };
+
+const matchesVerifiedTwin = (
+  candidate: ReturnType<typeof TwinRenderSchema.parse>,
+  verified: ReturnType<typeof compileVerifiedTwin>,
+): boolean =>
+  JSON.stringify({ ...candidate, sourceRefs: [] }) ===
+  JSON.stringify({ ...verified, sourceRefs: [] });
 
 export type { TwinProviders } from "./providers/types.js";

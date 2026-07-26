@@ -1,5 +1,6 @@
 import { SourceRefSchema, type SourceRef } from "@parallel/contracts";
 import type { EvidenceProvider } from "./types.js";
+import { isCanonicalExaQuery } from "../canonical-patterns.js";
 
 const EXA_ENDPOINT = "https://api.exa.ai/search";
 const INCLUDED_DOMAINS = [
@@ -23,6 +24,9 @@ export class ExaEvidenceProvider implements EvidenceProvider {
   ) {}
 
   async search(request: { query: string }): Promise<SourceRef[]> {
+    if (!isCanonicalExaQuery(request.query)) {
+      throw new Error("Exa query is not an allowlisted canonical query");
+    }
     const response = await this.fetchImpl(EXA_ENDPOINT, {
       method: "POST",
       headers: {

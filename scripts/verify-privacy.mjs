@@ -25,7 +25,8 @@ await new ExaEvidenceProvider("verification-key", async (_url, init) => {
   exaBody = String(init?.body);
   return new Response(JSON.stringify({ results: [] }), { status: 200 });
 }).search({
-  query: "introductory 2D statics moment equilibrium worked example",
+  query:
+    "introductory 2D statics worked example moment about point counter-clockwise positive",
 });
 
 const recognizedLine = streamBody
