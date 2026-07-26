@@ -108,15 +108,16 @@ Optional model overrides:
   and is filtered again after response.
 - Compilation fails closed on pattern mismatch, confidence below `0.8`, or a
   non-null rejection reason.
-- Personal Precedents store an abstract signature, schema-valid deterministic
-  twin, mapping summary, twin style, and outcome—never screenshot bytes, raw
-  OCR, or original-screen geometry.
+- Personal Precedents store the safe generated twin, an abstract signature,
+  and a one-way quantized shape fingerprint—never screenshot bytes, raw OCR,
+  or anchor coordinates.
 - `wrong_twin`, `not_same`, and `another_twin` suppress reuse.
 
-The Electron main process saves the active abstract precedent when `Unlocked`
-is selected and records negative outcomes for `Wrong twin`/`Another`. The
-sidecar renders a matched **Personal Precedent** card and lets the student mark
-an incorrect match as **Not same** without persisting screenshot geometry.
+The Electron main process saves the active verified precedent when `Unlocked`
+is selected and records negative outcomes for `Wrong twin`/`Another`. A later
+high-confidence fingerprint match reopens the safe prior twin before Exa or
+fresh compilation. The sidecar renders a **Personal Precedent** card and lets
+the student mark an incorrect match as **Not same**.
 
 ## Paid-recognition budget
 
@@ -129,13 +130,10 @@ API keys, screenshots, OCR, prompts, and provider responses never enter the
 budget table.
 
 `N` regeneration uses the already validated abstract signature and is
-explicitly uncharged. A Personal Precedent can be treated as uncharged only
-when an exact `sha256:` ID resolves locally to an `unlocked` row containing a
-schema-valid stored twin. Arbitrary IDs never create an exemption, and the
-fresh capture/API paths do not accept a precedent ID at all. The current
-overlay does not yet expose a precedent shelf, so every new capture remains a
-fresh recognition; this is the deliberate fail-closed behavior until a real
-stored-twin reopen entry point ships.
+explicitly uncharged. A Personal Precedent reopen releases its reserved fresh
+slot only when the main process itself finds an `unlocked`, high-confidence
+shape match and returns a schema-valid stored twin. Renderer/API callers
+cannot supply a precedent ID to claim that exemption.
 
 ## Packages
 

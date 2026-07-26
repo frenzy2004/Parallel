@@ -179,6 +179,70 @@ describe("Sidecar", () => {
     expect(onAnother).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps teaching sources collapsed, then reveals title and domain without navigation", () => {
+    const completed = events.at(-1);
+    if (completed?.state !== "complete") {
+      throw new Error("test fixture must end in a complete event");
+    }
+    const sourcedEvents: TwinEvent[] = [
+      ...events.slice(0, -1),
+      {
+        ...completed,
+        twin: {
+          ...completed.twin,
+          sourceRefs: [
+            {
+              title: "Engineering Statics — Moments",
+              url: "https://engineeringstatics.org/Chapter_04-moments.html?student=private",
+              highlight: "Moment concepts",
+            },
+          ],
+        },
+      },
+    ];
+    render(
+      <Sidecar events={sourcedEvents} onDismiss={() => undefined} />,
+    );
+
+    const toggle = screen.getByRole("button", {
+      name: /sources & confidence/i,
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveTextContent("97% structure confidence");
+    expect(toggle).toHaveTextContent("1 teaching source");
+    expect(
+      screen.queryByText("Engineering Statics — Moments"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByText("Engineering Statics — Moments"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("engineeringstatics.org")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByText(/student=private/i)).not.toBeInTheDocument();
+  });
+
+  it("labels teaching sources unavailable without lowering structural confidence", () => {
+    render(<Sidecar events={events} onDismiss={() => undefined} />);
+
+    const toggle = screen.getByRole("button", {
+      name: /sources & confidence/i,
+    });
+    expect(toggle).toHaveTextContent("97% structure confidence");
+    expect(toggle).toHaveTextContent("sources unavailable");
+
+    fireEvent.click(toggle);
+
+    expect(
+      screen.getByText(
+        "Teaching sources are unavailable. The worked twin is still verified locally.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows a matched Personal Precedent and accepts Not same feedback", () => {
     const onPrecedentFeedback = vi.fn();
     render(
@@ -201,7 +265,11 @@ describe("Sidecar", () => {
       />,
     );
 
-    expect(screen.getByText("Same shape")).toBeInTheDocument();
+    expect(
+      screen.getByText("Verified local shape match"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Prior twin reopened")).toBeInTheDocument();
+    expect(screen.queryByText(/96%/)).not.toBeInTheDocument();
     expect(
       screen.getByText("bracket force ↔ original force"),
     ).toBeInTheDocument();

@@ -153,6 +153,36 @@ describe("live intelligence safety boundary", () => {
     expect(events.at(-1)?.state).toBe("complete");
   });
 
+  it("completes a verified twin without sources when evidence search is unavailable", async () => {
+    const privateFailure =
+      "Exa outage included student@example.com and raw provider diagnostics";
+    const engine = new TwinEngine({
+      structure: { parseStructure: async () => canonicalMomentSignature },
+      evidence: {
+        search: async () => {
+          throw new Error(privateFailure);
+        },
+      },
+      compiler: new DemoCompilerProvider(),
+    });
+
+    const events = await collect(engine);
+    const completed = events.at(-1);
+
+    expect(events.map((event) => event.state)).toEqual([
+      "reading",
+      "recognized",
+      "twin_step",
+      "twin_step",
+      "complete",
+    ]);
+    expect(completed?.state).toBe("complete");
+    if (completed?.state === "complete") {
+      expect(completed.twin.sourceRefs).toEqual([]);
+    }
+    expect(JSON.stringify(events)).not.toContain(privateFailure);
+  });
+
   it("refuses a noncanonical query before Exa can receive it", async () => {
     const fetchImpl = vi.fn(async () =>
       new Response(JSON.stringify({ results: [] }), { status: 200 }),

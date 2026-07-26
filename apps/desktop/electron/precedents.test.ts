@@ -64,9 +64,15 @@ const twin: TwinRender = {
   ],
   mappingEdges: [
     {
-      twinAnchorId: "force",
-      originalAnchorId: "force",
-      label: "applied force",
+      twinAnchorId: "moment-center",
+      originalAnchorId: "moment-center",
+      label: "moment center",
+      workedStepIds: ["moment"],
+    },
+    {
+      twinAnchorId: "force-line",
+      originalAnchorId: "force-line",
+      label: "force line",
       workedStepIds: ["moment"],
     },
   ],
@@ -113,7 +119,7 @@ describe("Personal Precedents", () => {
     expect(JSON.stringify(row)).not.toContain('"x":0.08');
   });
 
-  it("matches an abstract precedent written before anchor regions existed", () => {
+  it("does not reopen a legacy metadata-only row without a verified twin or shape fingerprint", () => {
     const databasePath = createDatabasePath();
     const initialStore = new PrecedentStore(databasePath);
     initialStore.close();
@@ -139,29 +145,36 @@ describe("Personal Precedents", () => {
     database.close();
 
     const store = new PrecedentStore(databasePath);
-    expect(store.matchPrecedent(signature)?.precedent.signatureHash).toBe(
-      "sha256:legacy",
-    );
+    expect(store.matchPrecedent(signature)).toBeNull();
     store.close();
   });
 
-  it("matches only when abstract similarity reaches 0.92", () => {
+  it("reopens the prior verified twin only for the same high-confidence shape fingerprint", () => {
     const store = new PrecedentStore(createDatabasePath());
     save(store);
 
-    const oneEntityChanged = {
+    const match = store.matchPrecedent(signature);
+    expect(match?.score).toBeGreaterThanOrEqual(0.92);
+    expect(match?.twin).toEqual(twin);
+
+    const movedDiagram = {
       ...signature,
-      entities: ["load", "moment center", "lever arm"],
+      confidence: 0.99,
+      originalAnchorRegions: signature.originalAnchorRegions.map((anchor) => ({
+        ...anchor,
+        region: {
+          ...anchor.region,
+          x: Math.max(0, anchor.region.x - 0.07),
+        },
+      })),
     };
-    const twoEntitiesChanged = {
+    const lowConfidence = {
       ...signature,
-      entities: ["load", "pivot", "lever arm"],
+      confidence: 0.89,
     };
 
-    expect(store.matchPrecedent(oneEntityChanged)?.score).toBeGreaterThanOrEqual(
-      0.92,
-    );
-    expect(store.matchPrecedent(twoEntitiesChanged)).toBeNull();
+    expect(store.matchPrecedent(movedDiagram)).toBeNull();
+    expect(store.matchPrecedent(lowConfidence)).toBeNull();
     store.close();
   });
 
@@ -187,6 +200,21 @@ describe("Personal Precedents", () => {
     store.close();
   });
 
+  it("invalidates the same shape even when recognition confidence changed", () => {
+    const store = new PrecedentStore(createDatabasePath());
+    save(store);
+
+    recordPrecedentOutcome(
+      store,
+      { ...signature, confidence: 0.99 },
+      twin,
+      "another_twin",
+    );
+
+    expect(store.matchPrecedent(signature)).toBeNull();
+    store.close();
+  });
+
   it("invalidates the matched abstract precedent after Not same feedback", () => {
     const store = new PrecedentStore(createDatabasePath());
     save(store);
@@ -195,25 +223,6 @@ describe("Personal Precedents", () => {
     expect(recordPrecedentFeedback(store, signature, "not_same")).toBe(true);
 
     expect(store.matchPrecedent(signature)).toBeNull();
-    store.close();
-  });
-
-  it("reopens only an exact, unlocked precedent that has a stored safe twin", () => {
-    const store = new PrecedentStore(createDatabasePath());
-    const saved = store.savePrecedent({
-      signature,
-      twin,
-      outcome: "unlocked",
-    });
-
-    expect(store.reopenEligibleTwin(saved.signatureHash)).toEqual({
-      precedent: saved,
-      twin,
-    });
-    expect(store.reopenEligibleTwin("sha256:not-the-saved-id")).toBeNull();
-
-    recordPrecedentOutcome(store, signature, twin, "wrong_twin");
-    expect(store.reopenEligibleTwin(saved.signatureHash)).toBeNull();
     store.close();
   });
 });

@@ -55,6 +55,7 @@ export function Sidecar({
   onPrecedentFeedback = () => undefined,
 }: SidecarProps): JSX.Element {
   const [mappingVisible, setMappingVisible] = useState(false);
+  const [sourcesVisible, setSourcesVisible] = useState(false);
   const current = events.at(-1);
   const recognized = events.find((event) => event.state === "recognized");
   const complete = events.findLast((event) => event.state === "complete");
@@ -128,8 +129,8 @@ export function Sidecar({
         <aside className="precedent-card" aria-label="Personal Precedent">
           <div>
             <div className="eyebrow">Personal Precedent</div>
-            <strong>Same shape</strong>
-            <span>{Math.round(precedentMatch.score * 100)}% structural match</span>
+            <strong>Verified local shape match</strong>
+            <span>Prior twin reopened</span>
           </div>
           <p>{precedentMatch.precedent.mappingSummary}</p>
           <button onClick={onPrecedentFeedback}>Not same</button>
@@ -164,6 +165,54 @@ export function Sidecar({
         )}
       </ol>
       {complete?.state === "complete" ? (
+        <section
+          className="sources-shelf"
+          aria-label="Sources and confidence"
+        >
+          <button
+            className="sources-toggle"
+            aria-expanded={sourcesVisible}
+            aria-controls="sources-shelf-content"
+            onClick={() => setSourcesVisible((visible) => !visible)}
+          >
+            <span>Sources &amp; confidence</span>
+            <span className="sources-summary">
+              {Math.round(complete.twin.confidence * 100)}% structure
+              confidence ·{" "}
+              {complete.twin.sourceRefs.length === 0
+                ? "sources unavailable"
+                : `${complete.twin.sourceRefs.length} teaching ${
+                    complete.twin.sourceRefs.length === 1
+                      ? "source"
+                      : "sources"
+                  }`}
+            </span>
+            <span className="sources-caret" aria-hidden="true">
+              {sourcesVisible ? "−" : "+"}
+            </span>
+          </button>
+          {sourcesVisible ? (
+            <div id="sources-shelf-content" className="sources-content">
+              {complete.twin.sourceRefs.length === 0 ? (
+                <p>
+                  Teaching sources are unavailable. The worked twin is still
+                  verified locally.
+                </p>
+              ) : (
+                <ul>
+                  {complete.twin.sourceRefs.map((source) => (
+                    <li key={source.url}>
+                      <strong>{source.title}</strong>
+                      <span>{sourceDomain(source.url)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+      {complete?.state === "complete" ? (
         <footer>
           <button onClick={toggleMapping}>
             Map <kbd>M</kbd>
@@ -183,5 +232,13 @@ export function Sidecar({
     </main>
   );
 }
+
+const sourceDomain = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "Teaching source";
+  }
+};
 
 export { announcementFor };

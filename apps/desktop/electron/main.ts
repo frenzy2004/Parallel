@@ -33,6 +33,7 @@ import {
   recordPrecedentFeedback,
   recordPrecedentOutcome,
 } from "./precedents.js";
+import { eventsForReopenedTwin } from "./precedent-reopen.js";
 import {
   DesktopTwinBudgetAuthority,
   PersistentRollingTwinBudget,
@@ -89,6 +90,7 @@ let activeSignature: StructuralSignature | null = null;
 let activeTwin: TwinRender | null = null;
 let activeIterator: AsyncGenerator<TwinEvent> | null = null;
 let activeVariation = 0;
+let activePrecedentReopen = false;
 let overlayEpoch = 0;
 
 const generation = new GenerationSession();
@@ -239,6 +241,7 @@ const resetAttemptState = (variation = 0): void => {
   activeSessionId = randomUUID();
   invocationStartedAt = performance.now();
   activeVariation = variation;
+  activePrecedentReopen = false;
   clearActiveTwin();
 };
 
@@ -365,7 +368,7 @@ const runTwinGeneration = async (
   }
   const run = await twinBudgetAuthority.runFreshRecognition(
     process.env,
-    async () => {
+    async ({ releaseForValidatedPrecedentMatch }) => {
       const lease = generation.begin(cropDataUrl);
       const iterator = createTwinEngineFromEnv(process.env).stream(
         {
@@ -374,7 +377,12 @@ const runTwinGeneration = async (
         },
         { signal: lease.signal, variation: activeVariation },
       );
-      await deliverTwinEvents(iterator, lease, target);
+      await deliverTwinEvents(
+        iterator,
+        lease,
+        target,
+        releaseForValidatedPrecedentMatch,
+      );
     },
   );
   if (
@@ -418,6 +426,7 @@ const deliverTwinEvents = async (
   iterator: AsyncGenerator<TwinEvent>,
   lease: GenerationLease,
   target: BrowserWindow,
+  releaseForValidatedPrecedentMatch?: () => boolean,
 ): Promise<void> => {
   activeIterator = iterator;
   try {
@@ -428,6 +437,28 @@ const deliverTwinEvents = async (
         activePatternId = event.signature.patternId;
         activeSignature = event.signature;
         recognitionMs = Math.round(performance.now() - invocationStartedAt);
+        const precedentMatch =
+          activeVariation === 0
+            ? precedents?.matchPrecedent(event.signature)
+            : null;
+        if (precedentMatch) {
+          releaseForValidatedPrecedentMatch?.();
+          activePrecedentReopen = true;
+          target.webContents.send("parallel:twin-event", event);
+          for (const reopenedEvent of eventsForReopenedTwin(
+            precedentMatch.twin,
+          )) {
+            if (!canDeliverToSidecar(lease, target)) return;
+            if (reopenedEvent.state === "complete") {
+              activeTwin = reopenedEvent.twin;
+              fullMappingMs = Math.round(
+                performance.now() - invocationStartedAt,
+              );
+            }
+            target.webContents.send("parallel:twin-event", reopenedEvent);
+          }
+          return;
+        }
       } else if (event.state === "complete") {
         activeTwin = event.twin;
         fullMappingMs = Math.round(performance.now() - invocationStartedAt);
@@ -695,9 +726,14 @@ ipcMain.handle("parallel:record-outcome", (event, ...args: unknown[]) => {
 ipcMain.handle("parallel:match-precedent", (event, ...args: unknown[]) => {
   assertWindowSender(event, sidecarWindow);
   validateNoPayload(args);
-  return activeSignature && precedents
-    ? precedents.matchPrecedent(activeSignature)
-    : null;
+  if (!activeSignature || !precedents) return null;
+  const match = precedents.matchPrecedent(activeSignature);
+  if (!match) return null;
+  return {
+    precedent: match.precedent,
+    score: match.score,
+    reopened: activePrecedentReopen,
+  };
 });
 
 const initializeDesktop = async (): Promise<void> => {
@@ -725,10 +761,11 @@ const initializeDesktop = async (): Promise<void> => {
   paidTwinBudget = new PersistentRollingTwinBudget(databasePath, {
     nativeBinding,
   });
-  twinBudgetAuthority = new DesktopTwinBudgetAuthority(
-    paidTwinBudget,
-    precedents,
-  );
+  twinBudgetAuthority = new DesktopTwinBudgetAuthority(paidTwinBudget);
+  telemetry.assertReady();
+  precedents.assertReady();
+  paidTwinBudget.assertReady();
+  console.log("parallel_runtime_ready telemetry=ok precedents=ok");
 
   const registered = globalShortcut.register("Alt+Space", () => {
     void runGuarded(openCapture, showUnexpectedFailure);

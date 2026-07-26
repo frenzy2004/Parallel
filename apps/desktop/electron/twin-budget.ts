@@ -1,5 +1,4 @@
 import Database from "better-sqlite3";
-import type { EligiblePrecedentTwin } from "./precedents.js";
 
 export const ROLLING_MONTH_MS = 30 * 24 * 60 * 60 * 1_000;
 
@@ -29,8 +28,8 @@ export type FreshRecognitionRun<T> =
       value: T;
     };
 
-interface EligiblePrecedentLookup {
-  reopenEligibleTwin(signatureHash: string): EligiblePrecedentTwin | null;
+export interface FreshRecognitionReservation {
+  releaseForValidatedPrecedentMatch(): boolean;
 }
 
 export class PersistentRollingTwinBudget {
@@ -63,22 +62,36 @@ export class PersistentRollingTwinBudget {
     `);
   }
 
-  tryConsumeFreshRecognition(): BudgetDecision {
+  tryConsumeFreshRecognition(): BudgetDecision & {
+    reservationId: number | null;
+  } {
     return this.database.transaction(() => {
       const now = this.now();
       this.removeExpired(now);
       const consumed = this.consumedCount();
       if (consumed >= this.limit) {
-        return { allowed: false, remaining: 0 };
+        return { allowed: false, remaining: 0, reservationId: null };
       }
-      this.database
+      const result = this.database
         .prepare("INSERT INTO twin_budget_events (consumed_at) VALUES (?)")
         .run(now);
       return {
         allowed: true,
         remaining: this.limit - consumed - 1,
+        reservationId: Number(result.lastInsertRowid),
       };
     })();
+  }
+
+  releaseReservation(reservationId: number): boolean {
+    if (!Number.isSafeInteger(reservationId) || reservationId < 1) {
+      return false;
+    }
+    return (
+      this.database
+        .prepare("DELETE FROM twin_budget_events WHERE id = ?")
+        .run(reservationId).changes === 1
+    );
   }
 
   remaining(): number {
@@ -90,6 +103,15 @@ export class PersistentRollingTwinBudget {
 
   close(): void {
     this.database.close();
+  }
+
+  assertReady(): void {
+    const result = this.database
+      .prepare("SELECT 1 AS ready")
+      .get() as { ready?: unknown } | undefined;
+    if (result?.ready !== 1) {
+      throw new Error("Twin budget store readiness query failed.");
+    }
   }
 
   private removeExpired(now: number): void {
@@ -107,26 +129,12 @@ export class PersistentRollingTwinBudget {
 }
 
 export class DesktopTwinBudgetAuthority {
-  constructor(
-    private readonly budget: PersistentRollingTwinBudget,
-    private readonly eligiblePrecedents?: EligiblePrecedentLookup,
-  ) {}
+  constructor(private readonly budget: PersistentRollingTwinBudget) {}
 
   authorizeFreshRecognition(
     env: Record<string, string | undefined>,
   ): TwinStartDecision {
-    if (!env.OPENAI_API_KEY) {
-      return {
-        allowed: true,
-        charged: false,
-        remaining: this.budget.remaining(),
-      };
-    }
-    const decision = this.budget.tryConsumeFreshRecognition();
-    return {
-      ...decision,
-      charged: decision.allowed,
-    };
+    return this.reserveFreshRecognition(env).decision;
   }
 
   authorizeRegeneration(): TwinStartDecision {
@@ -139,16 +147,29 @@ export class DesktopTwinBudgetAuthority {
 
   async runFreshRecognition<T>(
     env: Record<string, string | undefined>,
-    work: () => T | Promise<T>,
+    work: (reservation: FreshRecognitionReservation) => T | Promise<T>,
   ): Promise<FreshRecognitionRun<T>> {
-    const decision = this.authorizeFreshRecognition(env);
+    const { decision, reservationId } = this.reserveFreshRecognition(env);
     if (!decision.allowed) {
       return { started: false, decision };
     }
+    let released = false;
+    const releaseForValidatedPrecedentMatch = (): boolean => {
+      if (released || reservationId === null) return false;
+      released = this.budget.releaseReservation(reservationId);
+      return released;
+    };
+    const value = await work({ releaseForValidatedPrecedentMatch });
     return {
       started: true,
-      decision,
-      value: await work(),
+      decision: released
+        ? {
+            allowed: true,
+            charged: false,
+            remaining: this.budget.remaining(),
+          }
+        : decision,
+      value,
     };
   }
 
@@ -161,13 +182,30 @@ export class DesktopTwinBudgetAuthority {
     };
   }
 
-  reopenEligiblePrecedent(input: unknown): EligiblePrecedentTwin | null {
-    if (
-      typeof input !== "string" ||
-      !/^sha256:[a-f0-9]{64}$/.test(input)
-    ) {
-      return null;
+  private reserveFreshRecognition(
+    env: Record<string, string | undefined>,
+  ): {
+    decision: TwinStartDecision;
+    reservationId: number | null;
+  } {
+    if (env.PARALLEL_DEMO_MODE === "1" || !env.OPENAI_API_KEY) {
+      return {
+        decision: {
+          allowed: true,
+          charged: false,
+          remaining: this.budget.remaining(),
+        },
+        reservationId: null,
+      };
     }
-    return this.eligiblePrecedents?.reopenEligibleTwin(input) ?? null;
+    const { reservationId, ...decision } =
+      this.budget.tryConsumeFreshRecognition();
+    return {
+      decision: {
+        ...decision,
+        charged: decision.allowed,
+      },
+      reservationId,
+    };
   }
 }
