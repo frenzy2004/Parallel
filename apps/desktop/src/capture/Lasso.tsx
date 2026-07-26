@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { JSX } from "react";
 
 interface Point {
   x: number;

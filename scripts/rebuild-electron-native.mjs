@@ -9,20 +9,13 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
+import { resolveDesktopSqliteBinding } from "./lib/native-binding-path.mjs";
 
 const root = resolve(import.meta.dirname, "..");
-const require = createRequire(import.meta.url);
-const electronVersion = require(
-  join(root, "node_modules", "electron", "package.json"),
-).version;
-const nodeBinding = join(
-  root,
-  "node_modules",
-  "better-sqlite3",
-  "build",
-  "Release",
-  "better_sqlite3.node",
-);
+const desktopRoot = join(root, "apps", "desktop");
+const desktopRequire = createRequire(join(desktopRoot, "package.json"));
+const electronVersion = desktopRequire("electron/package.json").version;
+const nodeBinding = resolveDesktopSqliteBinding(desktopRoot);
 if (!existsSync(nodeBinding)) {
   console.error("electron_native_build status=failed reason=node_binding_missing");
   process.exit(1);
@@ -43,7 +36,7 @@ copyFileSync(nodeBinding, savedNodeBinding);
 
 try {
   const rebuild = spawnSync(
-    join(root, "node_modules", ".bin", "electron-rebuild"),
+    join(desktopRoot, "node_modules", ".bin", "electron-rebuild"),
     [
       "--force",
       "--only",
@@ -51,7 +44,7 @@ try {
       "--version",
       electronVersion,
       "--module-dir",
-      join(root, "apps", "desktop"),
+      desktopRoot,
     ],
     { cwd: root, encoding: "utf8" },
   );

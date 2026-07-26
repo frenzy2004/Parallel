@@ -12,6 +12,18 @@ importers:
 
   .:
     devDependencies:
+      '@parallel/api':
+        specifier: workspace:*
+        version: link:apps/api
+      '@parallel/contracts':
+        specifier: workspace:*
+        version: link:packages/contracts
+      '@parallel/statics-patterns':
+        specifier: workspace:*
+        version: link:packages/statics-patterns
+      '@parallel/twin-engine':
+        specifier: workspace:*
+        version: link:packages/twin-engine
       '@types/node':
         specifier: ^22.10.0
         version: 22.20.1
@@ -36,6 +48,9 @@ importers:
       hono:
         specifier: ^4.8.12
         version: 4.12.32
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
 
   apps/desktop:
     dependencies:
@@ -97,6 +112,9 @@ importers:
       '@parallel/twin-engine':
         specifier: workspace:*
         version: link:../../packages/twin-engine
+      geist:
+        specifier: 1.7.0
+        version: 1.7.0(next@16.2.12(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       next:
         specifier: 16.2.12
         version: 16.2.12(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1307,6 +1325,11 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  geist@1.7.0:
+    resolution: {integrity: sha512-ZaoiZwkSf0DwwB1ncdLKp+ggAldqxl5L1+SXaNIBGkPAqcu+xjVJLxlf3/S8vLt9UHx1xu5fz3lbzKCj5iOVdQ==}
+    peerDependencies:
+      next: '>=13.2.0'
 
   gensync@1.0.0-beta.2:
     resolution: {integrity: sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg==}
@@ -2834,6 +2857,10 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  geist@1.7.0(next@16.2.12(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)):
+    dependencies:
+      next: 16.2.12(@types/node@24.13.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   gensync@1.0.0-beta.2: {}
 

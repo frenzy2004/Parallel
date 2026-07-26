@@ -5,8 +5,10 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
+    "pretest": "pnpm -w build:shared",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p electron/tsconfig.json",
+    "prebuild": "pnpm -w build:shared",
     "build": "vite build && esbuild electron/main.ts --bundle --platform=node --format=esm --target=node22 --external:electron --external:better-sqlite3 --outfile=dist-electron/main.js --sourcemap && esbuild electron/preload.ts --bundle --platform=node --format=cjs --target=node22 --external:electron --outfile=dist-electron/preload.cjs --sourcemap && node ../../scripts/rebuild-electron-native.mjs"
   },
   "dependencies": {

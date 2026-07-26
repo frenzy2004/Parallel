@@ -1,4 +1,5 @@
 import { StrictMode, useEffect, useState } from "react";
+import type { JSX } from "react";
 import { createRoot } from "react-dom/client";
 import { Lasso } from "./capture/Lasso.js";
 import { ScreenshotImport } from "./capture/ScreenshotImport.js";

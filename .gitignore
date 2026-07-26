@@ -17,3 +17,4 @@ apps/desktop/native/
 site/.vinext/
 site/.wrangler/
 work/**/node_modules
+.vercel

@@ -4,10 +4,20 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/compiler.ts",
-    "./registry": "./src/registry.ts"
+    ".": {
+      "types": "./src/compiler.ts",
+      "import": "./dist/compiler.js",
+      "default": "./dist/compiler.js"
+    },
+    "./registry": {
+      "types": "./src/registry.ts",
+      "import": "./dist/registry.js",
+      "default": "./dist/registry.js"
+    }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "pretest": "pnpm --filter @parallel/contracts build",
     "test": "vitest run src",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

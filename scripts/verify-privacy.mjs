@@ -1,11 +1,16 @@
 import { mkdtempSync, rmSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import Database from "better-sqlite3";
 import { createApp } from "@parallel/api";
 import { createTwinEngineFromEnv } from "@parallel/twin-engine";
 import { ExaEvidenceProvider } from "@parallel/twin-engine/providers/exa";
 import { PrecedentStore } from "../apps/desktop/electron/precedents.ts";
+
+const desktopRequire = createRequire(
+  new URL("../apps/desktop/package.json", import.meta.url),
+);
+const Database = desktopRequire("better-sqlite3");
 
 const secretCropText = "private-student-crop-7f33";
 const cropBytes = new TextEncoder().encode(secretCropText);

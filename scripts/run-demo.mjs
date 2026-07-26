@@ -23,7 +23,7 @@ for (const liveSetting of [
 }
 
 const electron = spawn(
-  resolve("node_modules/.bin/electron"),
+  resolve("apps/desktop/node_modules/.bin/electron"),
   [resolve("apps/desktop")],
   {
     stdio: "inherit",

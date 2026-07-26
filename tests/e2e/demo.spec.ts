@@ -44,7 +44,13 @@ describe("bundled no-key demo journey", () => {
     async () => {
       const sandbox = await mkdtemp(join(tmpdir(), "parallel-demo-env-"));
       const fakeBin = join(sandbox, "bin");
-      const electronBin = join(sandbox, "node_modules", ".bin");
+      const electronBin = join(
+        sandbox,
+        "apps",
+        "desktop",
+        "node_modules",
+        ".bin",
+      );
       const envOutput = join(sandbox, "electron-env.txt");
       await mkdir(fakeBin, { recursive: true });
       await mkdir(electronBin, { recursive: true });

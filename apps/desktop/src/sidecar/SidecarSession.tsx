@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { JSX } from "react";
 import { PrecedentSchema } from "@parallel/contracts";
 import { TwinEventSchema, type TwinEvent } from "@parallel/contracts/events";
 import { Sidecar, type PrecedentMatchView } from "./Sidecar.js";
