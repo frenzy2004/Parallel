@@ -1,0 +1,17 @@
+{
+  "name": "@parallel/statics-patterns",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/compiler.ts",
+    "./registry": "./src/registry.ts"
+  },
+  "scripts": {
+    "test": "vitest run src",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@parallel/contracts": "0.1.0"
+  }
+}

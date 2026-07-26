@@ -17,3 +17,11 @@ Worktree: `.worktrees/prototype`
 - Added strict Zod schemas for structural signatures, twin renders, precedents, requests, and the seven exact event states.
 - GREEN: `npm test -- packages/contracts/src/twin.test.ts && npm run typecheck`
   - 4 tests passed; contracts TypeScript check passed.
+
+## Task 2 — Validated Statics registry and deterministic compiler
+
+- RED: `npm test -- packages/statics-patterns/src/compiler.test.ts`
+  - Failed as expected because `./compiler.js` did not exist.
+- Added six bounded pattern definitions, deterministic surface/worked-step generators, mapping anchors, and a fail-closed compiler.
+- GREEN: `npm test -- packages/statics-patterns && npm run typecheck`
+  - 4 compiler/registry tests passed across all six patterns; workspace typecheck passed.
