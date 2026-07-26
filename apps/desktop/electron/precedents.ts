@@ -12,6 +12,14 @@ import {
 
 export const PRECEDENT_MATCH_THRESHOLD = 0.92;
 
+const AbstractSignatureSchema = StructuralSignatureSchema.omit({
+  originalAnchorRegions: true,
+});
+type AbstractSignature = Omit<
+  StructuralSignature,
+  "originalAnchorRegions"
+>;
+
 interface SavePrecedentInput {
   signature: StructuralSignature;
   twin: TwinRender;
@@ -60,10 +68,11 @@ export class PrecedentStore {
 
   savePrecedent(input: SavePrecedentInput): Precedent {
     const signature = StructuralSignatureSchema.parse(input.signature);
+    const persistedSignature = toAbstractSignature(signature);
     const twin = TwinRenderSchema.parse(input.twin);
     const createdAt = new Date().toISOString();
     const precedent = PrecedentSchema.parse({
-      signatureHash: signatureHash(signature),
+      signatureHash: signatureHash(persistedSignature),
       patternId: signature.patternId,
       mappingSummary: twin.mappingEdges
         .map((edge) => `${edge.twinAnchorId} ↔ ${edge.originalAnchorId}`)
@@ -92,13 +101,15 @@ export class PrecedentStore {
       )
       .run({
         ...precedent,
-        signatureJson: JSON.stringify(signature),
+        signatureJson: JSON.stringify(persistedSignature),
       });
     return precedent;
   }
 
   matchPrecedent(input: StructuralSignature): PrecedentMatch | null {
-    const signature = StructuralSignatureSchema.parse(input);
+    const signature = toAbstractSignature(
+      StructuralSignatureSchema.parse(input),
+    );
     const rows = this.database
       .prepare(
         `SELECT * FROM precedents
@@ -108,7 +119,7 @@ export class PrecedentStore {
 
     let best: PrecedentMatch | null = null;
     for (const row of rows) {
-      const storedSignature = StructuralSignatureSchema.parse(
+      const storedSignature = toAbstractSignature(
         JSON.parse(row.signature_json),
       );
       const score = structuralSimilarity(signature, storedSignature);
@@ -138,7 +149,17 @@ export class PrecedentStore {
   }
 }
 
-const signatureHash = (signature: StructuralSignature): string =>
+const toAbstractSignature = (
+  input: StructuralSignature | Record<string, unknown>,
+): AbstractSignature => {
+  const {
+    originalAnchorRegions: _transientRegions,
+    ...abstractInput
+  } = input;
+  return AbstractSignatureSchema.parse(abstractInput);
+};
+
+const signatureHash = (signature: AbstractSignature): string =>
   `sha256:${createHash("sha256").update(JSON.stringify(signature)).digest("hex")}`;
 
 const surfaceStyle = (statement: string): string =>
@@ -161,8 +182,8 @@ const jaccard = (left: string[], right: string[]): number => {
 };
 
 export const structuralSimilarity = (
-  left: StructuralSignature,
-  right: StructuralSignature,
+  left: AbstractSignature,
+  right: AbstractSignature,
 ): number =>
   0.5 * exact(left.patternId, right.patternId) +
   0.15 * exact(left.invariant, right.invariant) +

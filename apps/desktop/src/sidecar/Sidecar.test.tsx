@@ -119,6 +119,9 @@ describe("Sidecar", () => {
       },
     ]);
 
+    fireEvent.mouseEnter(
+      screen.getByText("Take moments about A.").closest("li")!,
+    );
     fireEvent.mouseLeave(screen.getByText("Take moments about A.").closest("li")!);
     expect(onMap).toHaveBeenCalledTimes(1);
 

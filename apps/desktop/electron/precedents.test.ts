@@ -108,6 +108,40 @@ describe("Personal Precedents", () => {
     expect(columns).not.toContain("raw_ocr");
     expect(JSON.stringify(row)).not.toContain("c2VjcmV0");
     expect(JSON.stringify(row)).not.toContain("student name");
+    expect(JSON.stringify(row)).not.toContain("originalAnchorRegions");
+    expect(JSON.stringify(row)).not.toContain('"x":0.08');
+  });
+
+  it("matches an abstract precedent written before anchor regions existed", () => {
+    const databasePath = createDatabasePath();
+    const initialStore = new PrecedentStore(databasePath);
+    initialStore.close();
+    const { originalAnchorRegions: _transient, ...legacySignature } = signature;
+    const database = new Database(databasePath);
+    database
+      .prepare(
+        `INSERT INTO precedents (
+          signature_hash, signature_json, pattern_id, mapping_summary,
+          twin_style, outcome, later_transfer_outcome, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        "sha256:legacy",
+        JSON.stringify(legacySignature),
+        signature.patternId,
+        "force ↔ force",
+        "moment_about_point:sign-bracket",
+        "unlocked",
+        null,
+        "2026-07-26T00:00:00.000Z",
+      );
+    database.close();
+
+    const store = new PrecedentStore(databasePath);
+    expect(store.matchPrecedent(signature)?.precedent.signatureHash).toBe(
+      "sha256:legacy",
+    );
+    store.close();
   });
 
   it("matches only when abstract similarity reaches 0.92", () => {

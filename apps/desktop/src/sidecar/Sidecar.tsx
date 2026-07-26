@@ -123,13 +123,15 @@ export function Sidecar({
           event.state === "twin_step" ? (
             <li
               key={event.step.id}
-              onMouseEnter={() =>
-                onMap(
-                  highlights.filter((highlight) =>
-                    highlight.workedStepIds.includes(event.step.id),
-                  ),
-                )
-              }
+              onMouseEnter={() => {
+                if (!mappingVisible) {
+                  onMap(
+                    highlights.filter((highlight) =>
+                      highlight.workedStepIds.includes(event.step.id),
+                    ),
+                  );
+                }
+              }}
               onMouseLeave={() => !mappingVisible && onMap([])}
             >
               <span>{event.step.explanation}</span>
