@@ -117,6 +117,25 @@ is selected and records negative outcomes for `Wrong twin`/`Another`. The
 sidecar renders a matched **Personal Precedent** card and lets the student mark
 an incorrect match as **Not same** without persisting screenshot geometry.
 
+## Paid-recognition budget
+
+The Electron main process—not the renderer—is the authority for paid live
+recognition. Before it can construct a fresh OpenAI recognition stream, a
+single SQLite transaction removes timestamps older than the 30-day rolling
+window, checks the 100-call limit, and persists the new timestamp. The
+transaction survives app restarts and stores only an integer ID and timestamp;
+API keys, screenshots, OCR, prompts, and provider responses never enter the
+budget table.
+
+`N` regeneration uses the already validated abstract signature and is
+explicitly uncharged. A Personal Precedent can be treated as uncharged only
+when an exact `sha256:` ID resolves locally to an `unlocked` row containing a
+schema-valid stored twin. Arbitrary IDs never create an exemption, and the
+fresh capture/API paths do not accept a precedent ID at all. The current
+overlay does not yet expose a precedent shelf, so every new capture remains a
+fresh recognition; this is the deliberate fail-closed behavior until a real
+stored-twin reopen entry point ships.
+
 ## Packages
 
 - `packages/contracts` — strict Zod product/event contracts

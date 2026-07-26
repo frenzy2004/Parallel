@@ -36,6 +36,15 @@ This file records failures, root causes, fixes, and fresh evidence so later work
 | Fixed | The 100-case evaluator failed immediately after exact mapping joins were enforced. | Its synthetic signatures still used the obsolete `problem-feature` placeholder anchor. | Generate the correct canonical anchor set for each gold pattern. | All 100 cases again report 100% schema validity and structural fidelity, with zero confident-wrong and answer-leak cases. |
 | Fixed | `N` re-ran recognition with the same deterministic seed, uploading the crop again and returning the same twin. | Regeneration reused the entire first-pass pipeline instead of the already-validated abstract structure. | Compile the next bounded variation directly from the canonical signature and allowlisted evidence; never call image recognition or Exa again. | Regression tests prove variation changes the twin while structure/evidence providers are never invoked; typecheck and production Electron build pass. |
 | Fixed | The generation session retained the raw crop after a successful twin solely to gate regeneration. | `N` had moved to abstract regeneration, but the old crop-owned lease API remained. | Release the lease’s private input at `recognized` (and in every terminal path), start regeneration without pixels, and scrub the caller-owned request object when the engine takes ownership. | Generation lifecycle and engine privacy regressions prove abstract regeneration keeps a valid lease without screenshot bytes. |
+| Fixed | The advertised 100-twin budget existed only in the optional API process, reset on restart, and trusted any caller-supplied `precedentId`; Electron called the live provider directly with no spending gate. | The prototype had two authorities and treated an identifier as proof of a reopen. | Make Electron main authoritative: transact rolling timestamps in local SQLite before constructing fresh live recognition, refuse the 101st call, keep abstract `N` regeneration free, and remove the API ID exemption. An exact local ID is exempt only when SQLite returns an `unlocked`, schema-valid stored twin. | 9 focused budget tests cover restart persistence, 100/101, rolling expiry, pre-provider refusal, free regeneration, exact eligible reopen, hostile IDs, and timestamp-only persistence. Full branch verification: 142/142 tests, all typechecks, production build, native runtime probe, zero privacy counters, 100/100 evaluator, and zero npm vulnerabilities. |
+| Decision | A matched precedent card is not yet a true stored-twin reopen entry point. | Matching currently happens only after a fresh image has already been recognized, so accepting its ID on the fresh path would fake an exemption without avoiding paid work. | Charge every new capture and keep the external API fail-closed. Preserve the validated local reopen authority for the future precedent shelf, where it can return the stored twin without invoking recognition. | The exhausted-budget API regression returns 429 even with `precedentId=precedent-123`; arbitrary, malformed, and non-unlocked local IDs return no twin. |
+
+## Verification and tooling failures
+
+| State | Failure or observation | Root cause | Fix / decision | Fresh evidence |
+|---|---|---|---|---|
+| Resolved setup failure | The first isolated-clone baseline passed 125 tests but seven existing precedent tests could not load `better_sqlite3.node`. | Dependencies were installed with lifecycle scripts disabled, so the native Node binding had not been built. | Rebuild only `better-sqlite3`, then rerun the affected tests before writing product code. Do not mistake a missing native binary for a product regression. | Existing precedent suite passed 7/7 immediately after the rebuild. |
+| Resolved sandbox failure | Privacy/evaluator commands failed with `listen EPERM` and npm audit failed DNS resolution. | `tsx` could not open its local IPC pipe inside the restricted sandbox; the advisory endpoint required network access. | Rerun the same commands with the required scoped execution permission; do not alter product code for an environment restriction. | Privacy counters are all zero; evaluator is 100/100 with zero confident-wrong and leakage cases; npm reports zero vulnerabilities. |
 
 ## Verification snapshots
 
@@ -47,4 +56,8 @@ This file records failures, root causes, fixes, and fresh evidence so later work
 - Privacy-first capture branch: 125/125 tests, all workspace typechecks,
   production build, 100-case evaluator, privacy scan, and native probe passed
   before integration.
-- Final verification remains required after the privacy-first screenshot fallback is added.
+- Persistent paid-budget branch: 142/142 tests, all workspace typechecks,
+  production build and Electron-native SQLite rebuild passed; privacy counters
+  are all zero; the synthetic evaluator is 100/100 with zero confident-wrong
+  and answer-leakage cases; npm audit reports zero vulnerabilities; the native
+  Electron/SQLite launch probe passed.
