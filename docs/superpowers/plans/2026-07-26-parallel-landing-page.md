@@ -54,7 +54,7 @@ expect((await post(validReservation)).status).toBe(201);
 
 - [ ] **Step 3: Run the focused test and confirm red**
 
-Run: `npm test -- app/api/reservations/route.test.ts` from `site/`
+Run: `pnpm test -- app/api/reservations/route.test.ts` from `site/`
 
 Expected: FAIL because the route is absent.
 
@@ -64,7 +64,7 @@ Create one reservation table with unique normalized email, course metadata, expl
 
 - [ ] **Step 5: Run tests and commit**
 
-Run: `npm test -- app/api/reservations/route.test.ts`
+Run: `pnpm test -- app/api/reservations/route.test.ts`
 
 ```bash
 git add site
@@ -91,7 +91,7 @@ Assert the page names the exact user, shows `$10` and `$39`, states the no-answe
 
 - [ ] **Step 2: Run the page test and confirm red**
 
-Run: `npm test -- app/page.test.tsx` from `site/`
+Run: `pnpm test -- app/page.test.tsx` from `site/`
 
 Expected: FAIL against the starter skeleton.
 
@@ -101,7 +101,7 @@ Use Braun-inspired warm white, charcoal, safety orange, strict grid, restrained 
 
 - [ ] **Step 4: Run tests and build**
 
-Run: `npm test && npm run build` from `site/`
+Run: `pnpm test && pnpm build` from `site/`
 
 Expected: PASS with the finished page metadata.
 
@@ -131,7 +131,7 @@ Reject unknown event names, arbitrary payload keys, and identifiers longer than 
 
 - [ ] **Step 2: Run the event test and confirm red**
 
-Run: `npm test -- app/api/events/route.test.ts` from `site/`
+Run: `pnpm test -- app/api/events/route.test.ts` from `site/`
 
 Expected: FAIL because event validation is absent.
 
@@ -141,7 +141,7 @@ Store event name, anonymous session ID, referral code, and timestamp only. Gener
 
 - [ ] **Step 4: Run accessibility and production validation**
 
-Run: `npm test && npm run build` from `site/`
+Run: `pnpm test && pnpm build` from `site/`
 
 Expected: PASS; every input has a label, focus states are visible, and reduced-motion users receive no looping animation.
 
@@ -159,12 +159,12 @@ git commit -m "feat: instrument the PARALLEL validation funnel"
 - Create: `work/site/parallel-site.tar.gz`
 
 **Interfaces:**
-- Consumes: successful `npm run build`, Sites source credential, current branch HEAD.
+- Consumes: successful `pnpm build`, Sites source credential, current branch HEAD.
 - Produces: one saved Sites version and one production deployment URL.
 
 - [ ] **Step 1: Re-run the deployment build**
 
-Run: `npm run build` from `site/`
+Run: `pnpm build` from `site/`
 
 Expected: PASS and `dist/server/index.js` exists.
 

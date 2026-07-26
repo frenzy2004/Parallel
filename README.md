@@ -1,128 +1,118 @@
-# PARALLEL prototype
+# PARALLEL
 
-PARALLEL is a macOS Electron prototype for one narrow learning loop:
-press `Option+Space`, lasso a complete 2D Statics problem, and receive a
-fully worked structural twin with different surface details. It never returns
-the original problem’s final answer.
+PARALLEL is a screenshot-to-structural-twin workspace for 2D Statics. A student
+uploads one complete problem, PARALLEL recognizes its underlying pattern, and
+returns a different fully worked problem with the same structure. It never
+returns the uploaded problem's final answer.
 
-This build is a deterministic product demo and synthetic technical preflight.
-It is not evidence of live-model fidelity, learning outcomes, or product-market
-fit. The pilot protocol and TA review remain responsible for those claims.
+The primary product is the Next.js web app in `apps/web`. The earlier Electron
+prototype remains in `apps/desktop` as preserved R&D, but it is not the default
+product surface.
 
 ## Requirements
 
-- macOS
-- Node.js 22 or newer
-- npm
+- Node.js 22.12 or newer
+- pnpm 11.9.0
 
-Screen Recording is optional. Without it, PARALLEL accepts a screenshot by
-paste, drag/drop, or the file picker. Grant it only if you want the instant
-one-click lasso.
+This repository is pnpm-only. Internal packages use `workspace:*`, the lockfile
+is committed, and install scripts are allowlisted only for the four packages
+that require them.
 
-## Run without API keys
+## Run the web product
 
 ```bash
-npm install
-npm run demo
+pnpm install --frozen-lockfile
+pnpm dev:web
 ```
 
-The command builds the renderer and Electron processes, opens the bundled
-Statics fixture, then starts PARALLEL in an explicit fixed-fixture mode. Press
-`Option+Space`:
+Open `http://localhost:3000`.
 
-- Without Screen Recording access, paste, drop, or choose one complete PNG,
-  JPEG, or WebP problem screenshot (up to 8 MiB), then select **Make twin**.
-- With Screen Recording access, lasso the complete problem and diagram
-  directly on screen.
+The bundled Statics demo works without credentials and is visibly labeled as a
+fixed fixture. It is physically separated from live screenshot analysis:
 
-The compact import view includes a trusted **Enable one-click lasso** action
-that opens the exact macOS Screen Recording settings pane. Demo mode uses no
-network and cannot silently become a solver for arbitrary screens. Outside this
-command, a missing live recognition provider fails closed.
+- `POST /api/twins` accepts exactly one live PNG, JPEG, or WebP crop up to
+  4 MiB. This leaves multipart headroom under Vercel's 4.5 MB Function payload
+  limit. The route returns an honest `503` when live recognition is not
+  configured.
+- `POST /api/demo` accepts only the named bundled fixture. It rejects uploads
+  and cannot impersonate a result for a student's screenshot.
 
-Keyboard controls:
+For live recognition, set server-side environment variables from
+`apps/web/.env.example`. Never prefix these variables with `NEXT_PUBLIC_`.
 
-- `M` — toggle mapping
-- `N` — generate a different verified twin from the same abstract structure
-- `U` — mark unlocked
-- `X` — mark wrong twin
-- `Esc` — dismiss
+```bash
+cp apps/web/.env.example apps/web/.env.local
+pnpm dev:web
+```
+
+`OPENAI_API_KEY` enables image-structure recognition. `EXA_API_KEY` adds
+allowlisted teaching-source enrichment; the verified twin can still compile
+when Exa is unavailable.
 
 ## Verify
 
 ```bash
-npm test
-npm run typecheck
-npm run build
-npm run evaluate
-npm run verify
+pnpm test
+pnpm typecheck
+pnpm build
+pnpm evaluate
+pnpm verify
+pnpm audit --audit-level high
 ```
 
-`npm run evaluate` runs 100 deterministic known-structure cases across the six
-bounded pattern families. Its output is explicitly labeled
+`pnpm evaluate` runs 100 deterministic known-structure cases across the six
+bounded 2D Statics pattern families. Its output is explicitly labeled
 `synthetic_preflight_not_live_model_validation`.
 
-`npm run verify` composes the in-process API route, a poisoned Exa request
-boundary, and SQLite storage inspection. It checks for answer fields, crop
-echoes, raw Exa leakage, and raw storage columns/values. It is a deterministic
-privacy preflight, not a bound-service or live-provider claim.
+`pnpm verify` composes the API boundary, a poisoned Exa request, and local
+storage inspection. It checks for answer fields, crop echoes, raw Exa leakage,
+and raw storage values. It is a deterministic privacy preflight, not a claim of
+live-provider fidelity.
 
-## Optional live-provider smoke test
-
-No `.env` file is needed or read. Supply credentials only in the process
-environment:
+The optional live-provider smoke test receives credentials only from the
+process environment and prints no keys, images, prompts, provider responses, or
+student content:
 
 ```bash
-OPENAI_API_KEY=... EXA_API_KEY=... npm run smoke:live
+OPENAI_API_KEY=... EXA_API_KEY=... pnpm smoke:live
 ```
 
-The smoke test renders the bundled Statics fixture and exercises both providers.
-It prints only status, recognized pattern, and latency. It never prints keys,
-the image, prompts, provider responses, or student content. It exits with a
-clear skipped status when either credential is absent.
+## Product truth and privacy boundaries
 
-Optional model overrides:
+- There is no screen recording. A user explicitly chooses, drops, or pastes one
+  screenshot.
+- The browser previews the image locally. The live route keeps its bytes only
+  for the active request, sends them only to OpenAI recognition with
+  `store: false`, and clears its references afterward.
+- Missing credentials, malformed images, low confidence, unsupported subjects,
+  and visible live assessments fail closed. Demo output is never substituted.
+- OpenAI classifies into one of six bounded patterns or refuses. A deterministic
+  compiler owns the new statement, equations, answer-leak boundary, mapping,
+  and structural checks.
+- Exa receives only a hardcoded canonical teaching query—not OCR, student text,
+  attempt context, or image bytes—and results are filtered through an exact
+  domain allowlist.
+- Worked steps map to normalized regions on the original image. Hover, focus,
+  or pin a step to reveal the corresponding geometry.
 
-- `OPENAI_RECOGNITION_MODEL` (default `gpt-5.6-terra`; chosen from live latency samples)
+## Deploy to Vercel
 
-## Privacy and safety boundaries
+The linked Vercel project uses `apps/web` as its application root.
 
-- Capture occurs only after explicit `Option+Space` invocation.
-- Only the in-memory lasso crop or explicitly imported screenshot is
-  submitted.
-- Imported screenshots are never written to disk by PARALLEL. The renderer
-  keeps the selected image only as a visible mapping reference until the
-  overlay closes; the generation lease releases its copy immediately after
-  recognition. In live mode, the selected image is sent only to the configured
-  OpenAI provider to recognize the structure.
-- Optional instant lasso reads screen thumbnails locally so the user can make
-  a selection. Full-screen pixels are never uploaded; only the completed lasso
-  crop is submitted.
-- Import accepts exactly one PNG, JPEG, or WebP image under the existing 8 MiB
-  crop limit; the main process validates MIME, base64 bytes, payload shape,
-  display bounds, sender identity, and the exact trusted renderer view.
-- OpenAI requests use strict structured outputs and `store: false`.
-- Dismissal aborts an in-flight provider request, and regeneration works from
-  the abstract signature without uploading the crop again.
-- Exa receives only an abstract query, uses an exact teaching-domain allowlist,
-  and is filtered again after response.
-- Compilation fails closed on pattern mismatch, confidence below `0.8`, or a
-  non-null rejection reason.
-- Personal Precedents store the safe generated twin, an abstract signature,
-  and a one-way quantized shape fingerprint—never screenshot bytes, raw OCR,
-  or anchor coordinates.
-- `wrong_twin`, `not_same`, and `another_twin` suppress reuse.
+```bash
+pnpm dlx vercel@57.0.0 deploy --prod --cwd apps/web
+```
 
-The Electron main process saves the active verified precedent when `Unlocked`
-is selected and records negative outcomes for `Wrong twin`/`Another`. A later
-high-confidence fingerprint match reopens the safe prior twin before Exa or
-fresh compilation. The sidecar renders a **Personal Precedent** card and lets
-the student mark an incorrect match as **Not same**.
+Add `OPENAI_API_KEY` and optionally `EXA_API_KEY` as encrypted server-side
+Vercel environment variables to enable live analysis. The fixed demo remains
+available without either key.
 
-## Packages
+## Workspace map
 
-- `packages/contracts` — strict Zod product/event contracts
-- `packages/statics-patterns` — six deterministic, bounded Statics patterns
-- `packages/twin-engine` — demo, OpenAI, and Exa providers plus safety gates
-- `apps/api` — in-memory crop handling and SSE API
-- `apps/desktop` — Electron lasso, sidecar, mapping overlay, and local SQLite
+- `apps/web` — primary Next.js product and live/demo route boundary
+- `packages/contracts` — strict Zod product and event contracts
+- `packages/statics-patterns` — six deterministic, bounded Statics compilers
+- `packages/twin-engine` — OpenAI classifier, Exa enrichment, and safety gates
+- `apps/api` — reusable in-process streaming API
+- `apps/desktop` — preserved Electron capture and overlay prototype
+- `docs/BUILD_LOG.md` — failures, root causes, fixes, and fresh evidence
