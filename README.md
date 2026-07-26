@@ -119,6 +119,22 @@ high-confidence fingerprint match reopens the safe prior twin before Exa or
 fresh compilation. The sidecar renders a **Personal Precedent** card and lets
 the student mark an incorrect match as **Not same**.
 
+## Paid-recognition budget
+
+The Electron main process—not the renderer—is the authority for paid live
+recognition. Before it can construct a fresh OpenAI recognition stream, a
+single SQLite transaction removes timestamps older than the 30-day rolling
+window, checks the 100-call limit, and persists the new timestamp. The
+transaction survives app restarts and stores only an integer ID and timestamp;
+API keys, screenshots, OCR, prompts, and provider responses never enter the
+budget table.
+
+`N` regeneration uses the already validated abstract signature and is
+explicitly uncharged. A Personal Precedent reopen releases its reserved fresh
+slot only when the main process itself finds an `unlocked`, high-confidence
+shape match and returns a schema-valid stored twin. Renderer/API callers
+cannot supply a precedent ID to claim that exemption.
+
 ## Packages
 
 - `packages/contracts` — strict Zod product/event contracts

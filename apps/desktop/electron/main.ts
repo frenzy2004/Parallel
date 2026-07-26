@@ -35,6 +35,10 @@ import {
 } from "./precedents.js";
 import { eventsForReopenedTwin } from "./precedent-reopen.js";
 import {
+  DesktopTwinBudgetAuthority,
+  PersistentRollingTwinBudget,
+} from "./twin-budget.js";
+import {
   assertTrustedIpcSender,
   isTrustedRendererDocumentUrl,
   resolveRendererSource,
@@ -75,6 +79,8 @@ let activeDisplayBounds: Rectangle | null = null;
 let activeLassoBounds: Rectangle | null = null;
 let telemetry: TelemetryStore | null = null;
 let precedents: PrecedentStore | null = null;
+let paidTwinBudget: PersistentRollingTwinBudget | null = null;
+let twinBudgetAuthority: DesktopTwinBudgetAuthority | null = null;
 let activeSessionId = randomUUID();
 let activePatternId: StaticsPatternId | null = null;
 let invocationStartedAt = 0;
@@ -357,15 +363,39 @@ const runTwinGeneration = async (
   target: BrowserWindow,
 ): Promise<void> => {
   cancelActiveIterator();
-  const lease = generation.begin(cropDataUrl);
-  const iterator = createTwinEngineFromEnv(process.env).stream(
-    {
-      cropDataUrl,
-      coursePackId: "statics-2d-v1",
+  if (!twinBudgetAuthority) {
+    throw new Error("Paid recognition budget is unavailable.");
+  }
+  const run = await twinBudgetAuthority.runFreshRecognition(
+    process.env,
+    async ({ releaseForValidatedPrecedentMatch }) => {
+      const lease = generation.begin(cropDataUrl);
+      const iterator = createTwinEngineFromEnv(process.env).stream(
+        {
+          cropDataUrl,
+          coursePackId: "statics-2d-v1",
+        },
+        { signal: lease.signal, variation: activeVariation },
+      );
+      await deliverTwinEvents(
+        iterator,
+        lease,
+        target,
+        releaseForValidatedPrecedentMatch,
+      );
     },
-    { signal: lease.signal, variation: activeVariation },
   );
-  await deliverTwinEvents(iterator, lease, target);
+  if (
+    !run.started &&
+    sidecarWindow === target &&
+    !target.isDestroyed()
+  ) {
+    target.webContents.send("parallel:twin-event", {
+      state: "error",
+      message:
+        "Monthly live-recognition limit reached. Regeneration remains free on an existing twin.",
+    } satisfies TwinEvent);
+  }
 };
 
 const runTwinRegeneration = async (
@@ -375,22 +405,28 @@ const runTwinRegeneration = async (
   target: BrowserWindow,
 ): Promise<void> => {
   cancelActiveIterator();
-  const lease = generation.begin();
-  const iterator = createTwinEngineFromEnv(process.env).regenerate(
-    {
-      signature,
-      evidence: twin.sourceRefs,
-      variation,
-    },
-    { signal: lease.signal },
-  );
-  await deliverTwinEvents(iterator, lease, target);
+  if (!twinBudgetAuthority) {
+    throw new Error("Paid recognition budget is unavailable.");
+  }
+  await twinBudgetAuthority.runRegeneration(async () => {
+    const lease = generation.begin();
+    const iterator = createTwinEngineFromEnv(process.env).regenerate(
+      {
+        signature,
+        evidence: twin.sourceRefs,
+        variation,
+      },
+      { signal: lease.signal },
+    );
+    await deliverTwinEvents(iterator, lease, target);
+  });
 };
 
 const deliverTwinEvents = async (
   iterator: AsyncGenerator<TwinEvent>,
   lease: GenerationLease,
   target: BrowserWindow,
+  releaseForValidatedPrecedentMatch?: () => boolean,
 ): Promise<void> => {
   activeIterator = iterator;
   try {
@@ -406,6 +442,7 @@ const deliverTwinEvents = async (
             ? precedents?.matchPrecedent(event.signature)
             : null;
         if (precedentMatch) {
+          releaseForValidatedPrecedentMatch?.();
           activePrecedentReopen = true;
           target.webContents.send("parallel:twin-event", event);
           for (const reopenedEvent of eventsForReopenedTwin(
@@ -721,8 +758,13 @@ const initializeDesktop = async (): Promise<void> => {
   const nativeBinding = join(app.getAppPath(), "native", "better_sqlite3.node");
   telemetry = new TelemetryStore(databasePath, nativeBinding);
   precedents = new PrecedentStore(databasePath, nativeBinding);
+  paidTwinBudget = new PersistentRollingTwinBudget(databasePath, {
+    nativeBinding,
+  });
+  twinBudgetAuthority = new DesktopTwinBudgetAuthority(paidTwinBudget);
   telemetry.assertReady();
   precedents.assertReady();
+  paidTwinBudget.assertReady();
   console.log("parallel_runtime_ready telemetry=ok precedents=ok");
 
   const registered = globalShortcut.register("Alt+Space", () => {
@@ -753,6 +795,9 @@ app.on("will-quit", () => {
   telemetry = null;
   precedents?.close();
   precedents = null;
+  twinBudgetAuthority = null;
+  paidTwinBudget?.close();
+  paidTwinBudget = null;
   globalShortcut.unregisterAll();
 });
 app.on("window-all-closed", () => {

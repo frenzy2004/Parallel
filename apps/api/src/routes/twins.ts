@@ -21,6 +21,9 @@ export const createTwinRoutes = (
     if (!(crop instanceof File) || typeof coursePackId !== "string") {
       return context.json({ error: "invalid_request" }, 400);
     }
+    if (precedentId !== null) {
+      return context.json({ error: "precedent_reopen_not_supported" }, 400);
+    }
     if (!ALLOWED_CROP_TYPES.has(crop.type)) {
       return context.json({ error: "unsupported_crop_type" }, 415);
     }
@@ -28,9 +31,7 @@ export const createTwinRoutes = (
       return context.json({ error: "crop_too_large" }, 413);
     }
     if (
-      !budget.tryConsume({
-        precedentReopen: typeof precedentId === "string" && precedentId.length > 0,
-      })
+      !budget.tryConsumeFresh()
     ) {
       return context.json({ error: "monthly_fresh_twin_budget_exhausted" }, 429);
     }

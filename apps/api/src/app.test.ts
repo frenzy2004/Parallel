@@ -63,10 +63,16 @@ describe("local twin API", () => {
     expect(body).not.toMatch(/original(?:_|)answer/i);
   });
 
-  it("enforces 100 fresh twins but does not charge precedent reopens", async () => {
+  it("rejects caller-supplied precedent IDs instead of treating them as exemptions", async () => {
     const budget = new RollingTwinBudget(1);
     const app = createDemoApp(budget);
 
+    const reopenForm = makeForm();
+    reopenForm.set("precedentId", "precedent-123");
+    const rejected = await app.request("/v1/twins", {
+      method: "POST",
+      body: reopenForm,
+    });
     const first = await app.request("/v1/twins", {
       method: "POST",
       body: makeForm(),
@@ -75,16 +81,13 @@ describe("local twin API", () => {
       method: "POST",
       body: makeForm(),
     });
-    const reopenForm = makeForm();
-    reopenForm.set("precedentId", "precedent-123");
-    const reopened = await app.request("/v1/twins", {
-      method: "POST",
-      body: reopenForm,
-    });
 
+    expect(rejected.status).toBe(400);
+    expect(await rejected.json()).toEqual({
+      error: "precedent_reopen_not_supported",
+    });
     expect(first.status).toBe(200);
     expect(blocked.status).toBe(429);
-    expect(reopened.status).toBe(200);
   });
 
   it("exposes health, outcomes, abstract matching, and course pack metadata", async () => {
