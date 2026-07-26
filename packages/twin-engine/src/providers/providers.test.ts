@@ -4,7 +4,7 @@ import type {
   TwinRender,
 } from "@parallel/contracts";
 import type { TwinEvent } from "@parallel/contracts/events";
-import { createTwinEngineFromEnv } from "../engine.js";
+import { createTwinEngineFromEnv, TwinEngine } from "../engine.js";
 import { ExaEvidenceProvider } from "./exa.js";
 import { OpenAITwinProvider } from "./openai.js";
 
@@ -53,11 +53,13 @@ const twin: TwinRender = {
 describe("provider privacy boundaries", () => {
   it("sends Exa only the abstract query", async () => {
     let fetchBody: unknown;
+    let fetchHeaders: Headers | undefined;
     const fetchImpl = vi.fn(async (
       _url: string | URL | Request,
       init?: RequestInit,
     ) => {
       fetchBody = JSON.parse(String(init?.body));
+      fetchHeaders = new Headers(init?.headers);
       return new Response(
         JSON.stringify({
           results: [
@@ -79,8 +81,15 @@ describe("provider privacy boundaries", () => {
       query: safeQuery,
       type: "fast",
       numResults: 4,
-      highlights: true,
+      includeDomains: [
+        "engineeringstatics.org",
+        "eng.libretexts.org",
+        "ocw.mit.edu",
+        "pressbooks.library.upei.ca",
+      ],
+      contents: { highlights: true },
     });
+    expect(fetchHeaders?.get("authorization")).toBe("Bearer exa-test");
     expect(JSON.stringify(fetchBody)).not.toContain(secretCrop);
   });
 
@@ -166,5 +175,73 @@ describe("provider privacy boundaries", () => {
       "complete",
     ]);
     expect(events.at(-1)).not.toHaveProperty("originalAnswer");
+  });
+
+  it.each([
+    {
+      name: "pattern mismatch",
+      unsafeTwin: { ...twin, patternId: "couple_moments" as const },
+    },
+    {
+      name: "low confidence",
+      unsafeTwin: { ...twin, confidence: 0.79 },
+    },
+    {
+      name: "rejection",
+      unsafeTwin: { ...twin, rejectionReason: "not course-compatible" },
+    },
+  ])("fails closed on $name from compilation", async ({ unsafeTwin }) => {
+    const engine = new TwinEngine({
+      structure: { parseStructure: async () => signature },
+      evidence: { search: async () => [] },
+      compiler: { compileTwin: async () => unsafeTwin },
+    });
+    const states: string[] = [];
+    for await (const event of engine.stream({
+      cropDataUrl: secretCrop,
+      coursePackId: "statics-2d-v1",
+    })) {
+      states.push(event.state);
+    }
+
+    expect(states).not.toContain("complete");
+    expect(states.at(-1)).toBe("error");
+  });
+
+  it("uses only evidence-backed source references in the completed twin", async () => {
+    const evidence = {
+      title: "MIT OpenCourseWare",
+      url: "https://ocw.mit.edu/courses/statics",
+      highlight: "Equilibrium source",
+    };
+    const engine = new TwinEngine({
+      structure: { parseStructure: async () => signature },
+      evidence: { search: async () => [evidence] },
+      compiler: {
+        compileTwin: async () => ({
+          ...twin,
+          sourceRefs: [
+            {
+              title: "Invented",
+              url: "https://answers.invalid/copied",
+              highlight: "Untrusted",
+            },
+          ],
+        }),
+      },
+    });
+    const events: TwinEvent[] = [];
+    for await (const event of engine.stream({
+      cropDataUrl: secretCrop,
+      coursePackId: "statics-2d-v1",
+    })) {
+      events.push(event);
+    }
+
+    const completed = events.at(-1);
+    expect(completed?.state).toBe("complete");
+    if (completed?.state === "complete") {
+      expect(completed.twin.sourceRefs).toEqual([evidence]);
+    }
   });
 });

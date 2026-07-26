@@ -2,12 +2,13 @@ import { SourceRefSchema, type SourceRef } from "@parallel/contracts";
 import type { EvidenceProvider } from "./types.js";
 
 const EXA_ENDPOINT = "https://api.exa.ai/search";
-const ALLOWED_DOMAINS = new Set([
+const INCLUDED_DOMAINS = [
   "engineeringstatics.org",
   "eng.libretexts.org",
   "ocw.mit.edu",
   "pressbooks.library.upei.ca",
-]);
+] as const;
+const ALLOWED_DOMAINS = new Set<string>(INCLUDED_DOMAINS);
 
 interface ExaResult {
   title?: unknown;
@@ -26,13 +27,14 @@ export class ExaEvidenceProvider implements EvidenceProvider {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-api-key": this.apiKey,
+        authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         query: request.query,
         type: "fast",
         numResults: 4,
-        highlights: true,
+        includeDomains: INCLUDED_DOMAINS,
+        contents: { highlights: true },
       }),
     });
     if (!response.ok) {
@@ -69,4 +71,4 @@ export class ExaEvidenceProvider implements EvidenceProvider {
   }
 }
 
-export { ALLOWED_DOMAINS };
+export { ALLOWED_DOMAINS, INCLUDED_DOMAINS };

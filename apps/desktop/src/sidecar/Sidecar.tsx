@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TwinEvent } from "@parallel/contracts/events";
 
 interface SidecarProps {
@@ -46,24 +46,25 @@ export function Sidecar({
         : [],
     [complete],
   );
+  const toggleMapping = useCallback(() => {
+    setMappingVisible((visible) => {
+      onMap(visible ? [] : anchorIds);
+      return !visible;
+    });
+  }, [anchorIds, onMap]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (key === "escape") onDismiss();
-      if (key === "m") {
-        setMappingVisible((visible) => {
-          onMap(visible ? [] : anchorIds);
-          return !visible;
-        });
-      }
+      if (key === "m") toggleMapping();
       if (key === "n") onOutcome("another_twin");
       if (key === "u") onOutcome("unlocked");
       if (key === "x") onOutcome("wrong_twin");
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [anchorIds, onDismiss, onMap, onOutcome]);
+  }, [onDismiss, onOutcome, toggleMapping]);
 
   return (
     <main className="sidecar-shell">
@@ -104,7 +105,7 @@ export function Sidecar({
       </ol>
       {complete?.state === "complete" ? (
         <footer>
-          <button onClick={() => onMap(mappingVisible ? [] : anchorIds)}>
+          <button onClick={toggleMapping}>
             Map <kbd>M</kbd>
           </button>
           <button onClick={() => onOutcome("another_twin")}>

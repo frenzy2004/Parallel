@@ -79,4 +79,20 @@ describe("Sidecar", () => {
 
     expect(onDismiss).toHaveBeenCalledOnce();
   });
+
+  it("toggles a pinned mapping from the Map button", () => {
+    const onMap = vi.fn();
+    render(
+      <Sidecar events={events} onDismiss={() => undefined} onMap={onMap} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /map/i }));
+    expect(onMap).toHaveBeenLastCalledWith(["force"]);
+
+    fireEvent.mouseLeave(screen.getByText("Take moments about A.").closest("li")!);
+    expect(onMap).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /map/i }));
+    expect(onMap).toHaveBeenLastCalledWith([]);
+  });
 });

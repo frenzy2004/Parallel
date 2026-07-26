@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import {
+  TwinRenderSchema,
   TwinRequestSchema,
   type TwinRequest,
 } from "@parallel/contracts";
@@ -47,11 +48,24 @@ export class TwinEngine {
         query: signature.exaQuery,
       });
       const seed = stableSeed(signature.patternId);
-      const twin = await this.providers.compiler.compileTwin(
-        signature,
-        evidence,
-        seed,
+      const compiledTwin = TwinRenderSchema.parse(
+        await this.providers.compiler.compileTwin(
+          signature,
+          evidence,
+          seed,
+        ),
       );
+      if (
+        compiledTwin.patternId !== signature.patternId ||
+        compiledTwin.confidence < 0.8 ||
+        compiledTwin.rejectionReason !== null
+      ) {
+        throw new Error("Compiled twin failed the structural safety gate");
+      }
+      const twin = TwinRenderSchema.parse({
+        ...compiledTwin,
+        sourceRefs: evidence.filter(isAllowlistedSource),
+      });
       for (const [index, step] of twin.workedSteps.entries()) {
         yield { state: "twin_step", index, step };
       }
@@ -107,5 +121,20 @@ export const createTwinEngineFromEnv = (
 
 const stableSeed = (value: string): number =>
   [...value].reduce((total, character) => total + character.charCodeAt(0), 0);
+
+const SOURCE_DOMAINS = new Set([
+  "engineeringstatics.org",
+  "eng.libretexts.org",
+  "ocw.mit.edu",
+  "pressbooks.library.upei.ca",
+]);
+
+const isAllowlistedSource = (source: { url: string }): boolean => {
+  try {
+    return SOURCE_DOMAINS.has(new URL(source.url).hostname);
+  } catch {
+    return false;
+  }
+};
 
 export type { TwinProviders } from "./providers/types.js";

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { StructuralSignature } from "@parallel/contracts";
 
 const bridge = {
   startCapture: (): Promise<void> => ipcRenderer.invoke("parallel:start-capture"),
@@ -9,6 +10,11 @@ const bridge = {
   setMappingHighlights: (anchorIds: string[]): Promise<void> =>
     ipcRenderer.invoke("parallel:set-mapping-highlights", anchorIds),
   dismiss: (): Promise<void> => ipcRenderer.invoke("parallel:dismiss"),
+  recordOutcome: (
+    outcome: "unlocked" | "wrong_twin" | "another_twin",
+  ): Promise<void> => ipcRenderer.invoke("parallel:record-outcome", outcome),
+  matchPrecedent: (signature: StructuralSignature): Promise<unknown> =>
+    ipcRenderer.invoke("parallel:match-precedent", signature),
   onCaptureSource: (listener: (dataUrl: string) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, dataUrl: string) =>
       listener(dataUrl);

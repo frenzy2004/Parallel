@@ -44,6 +44,7 @@ function SidecarView(): JSX.Element {
       onMap={(anchorIds) =>
         void window.parallel.setMappingHighlights(anchorIds)
       }
+      onOutcome={(outcome) => void window.parallel.recordOutcome(outcome)}
     />
   );
 }

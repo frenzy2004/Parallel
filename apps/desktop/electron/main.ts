@@ -9,12 +9,23 @@ import {
 } from "electron";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { randomUUID } from "node:crypto";
 import { createTwinEngineFromEnv } from "@parallel/twin-engine";
+import type {
+  StaticsPatternId,
+  StructuralSignature,
+  TwinRender,
+} from "@parallel/contracts";
+import { TelemetryStore, type OutcomeEvent } from "./telemetry.js";
+import {
+  PrecedentStore,
+  recordPrecedentOutcome,
+} from "./precedents.js";
 import { chooseSidecarBounds, type Rectangle } from "./window-placement.js";
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 const rendererUrl = process.env.PARALLEL_RENDERER_URL;
-const preloadPath = join(currentDirectory, "preload.js");
+const preloadPath = join(currentDirectory, "preload.cjs");
 const rendererFile = join(currentDirectory, "../dist/index.html");
 
 let captureWindow: BrowserWindow | null = null;
@@ -22,6 +33,15 @@ let sidecarWindow: BrowserWindow | null = null;
 let mappingWindow: BrowserWindow | null = null;
 let activeDisplayBounds: Rectangle | null = null;
 let activeLassoBounds: Rectangle | null = null;
+let telemetry: TelemetryStore | null = null;
+let precedents: PrecedentStore | null = null;
+let activeSessionId = randomUUID();
+let activePatternId: StaticsPatternId | null = null;
+let invocationStartedAt = 0;
+let recognitionMs: number | null = null;
+let fullMappingMs: number | null = null;
+let activeSignature: StructuralSignature | null = null;
+let activeTwin: TwinRender | null = null;
 
 const loadView = async (window: BrowserWindow, view: string): Promise<void> => {
   if (rendererUrl) {
@@ -53,6 +73,13 @@ const dismiss = (): void => {
 
 const openCapture = async (): Promise<void> => {
   dismiss();
+  activeSessionId = randomUUID();
+  activePatternId = null;
+  invocationStartedAt = performance.now();
+  recognitionMs = null;
+  fullMappingMs = null;
+  activeSignature = null;
+  activeTwin = null;
   const cursor = screen.getCursorScreenPoint();
   const display = screen.getDisplayNearestPoint(cursor);
   activeDisplayBounds = display.bounds;
@@ -134,6 +161,15 @@ const showSidecar = async (
     if (sidecarWindow?.isDestroyed() !== false) {
       break;
     }
+    if (event.state === "recognized") {
+      activePatternId = event.signature.patternId;
+      activeSignature = event.signature;
+      recognitionMs = Math.round(performance.now() - invocationStartedAt);
+    }
+    if (event.state === "complete") {
+      activeTwin = event.twin;
+      fullMappingMs = Math.round(performance.now() - invocationStartedAt);
+    }
     sidecarWindow.webContents.send("parallel:twin-event", event);
   }
 };
@@ -168,6 +204,14 @@ const showMapping = async (anchorIds: string[]): Promise<void> => {
 };
 
 app.whenReady().then(() => {
+  const databasePath = join(app.getPath("userData"), "parallel.sqlite");
+  const nativeBinding = join(
+    app.getAppPath(),
+    "native",
+    "better_sqlite3.node",
+  );
+  telemetry = new TelemetryStore(databasePath, nativeBinding);
+  precedents = new PrecedentStore(databasePath, nativeBinding);
   const registered = globalShortcut.register("Alt+Space", () => {
     void openCapture();
   });
@@ -189,8 +233,47 @@ ipcMain.handle(
   async (_event, anchorIds: string[]): Promise<void> => showMapping(anchorIds),
 );
 ipcMain.handle("parallel:dismiss", () => dismiss());
+ipcMain.handle(
+  "parallel:record-outcome",
+  (_event, outcome: OutcomeEvent): void => {
+    if (!["unlocked", "wrong_twin", "another_twin"].includes(outcome)) {
+      throw new Error("Unsupported outcome");
+    }
+    telemetry?.record({
+      sessionId: activeSessionId,
+      outcome,
+      patternId: activePatternId,
+      recognitionMs,
+      fullMappingMs,
+    });
+    if (
+      precedents &&
+      activeSignature &&
+      activeTwin &&
+      ["unlocked", "wrong_twin", "another_twin"].includes(outcome)
+    ) {
+      recordPrecedentOutcome(
+        precedents,
+        activeSignature,
+        activeTwin,
+        outcome as "unlocked" | "wrong_twin" | "another_twin",
+      );
+    }
+  },
+);
+ipcMain.handle(
+  "parallel:match-precedent",
+  (_event, signature: StructuralSignature) =>
+    precedents?.matchPrecedent(signature) ?? null,
+);
 
-app.on("will-quit", () => globalShortcut.unregisterAll());
+app.on("will-quit", () => {
+  telemetry?.close();
+  telemetry = null;
+  precedents?.close();
+  precedents = null;
+  globalShortcut.unregisterAll();
+});
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
