@@ -21,6 +21,7 @@ const validTwin = {
       twinAnchorId: "twin-load",
       originalAnchorId: "original-load",
       label: "applied load",
+      workedStepIds: ["step-1"],
     },
   ],
   sourceRefs: [],
@@ -50,6 +51,53 @@ describe("PARALLEL product contracts", () => {
         missingContext: [],
         confidence: 1.01,
         exaQuery: "introductory 2D statics moment equilibrium",
+        originalAnchorRegions: [
+          {
+            anchorId: "force-line",
+            region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it("accepts only normalized original-anchor regions inside the lasso", () => {
+    const signature = {
+      domain: "statics_2d",
+      patternId: "moment_about_point",
+      entities: ["beam", "force"],
+      relationships: ["force acts away from A"],
+      constraints: ["counter-clockwise positive"],
+      goal: "signed moment",
+      invariant: "M = Fd",
+      courseConvention: "counter-clockwise positive",
+      missingContext: [],
+      confidence: 0.97,
+      exaQuery: "introductory statics moment about point",
+      originalAnchorRegions: [
+        {
+          anchorId: "moment-center",
+          region: { x: 0.08, y: 0.42, width: 0.12, height: 0.18 },
+        },
+        {
+          anchorId: "force-line",
+          region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
+        },
+      ],
+    };
+
+    expect(
+      StructuralSignatureSchema.parse(signature).originalAnchorRegions,
+    ).toHaveLength(2);
+    expect(() =>
+      StructuralSignatureSchema.parse({
+        ...signature,
+        originalAnchorRegions: [
+          {
+            anchorId: "force-line",
+            region: { x: 0.9, y: 0.2, width: 0.2, height: 0.2 },
+          },
+        ],
       }),
     ).toThrow();
   });

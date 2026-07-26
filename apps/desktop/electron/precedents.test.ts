@@ -39,6 +39,16 @@ const signature: StructuralSignature = {
   missingContext: [],
   confidence: 0.98,
   exaQuery: "introductory 2D statics moment about point worked example",
+  originalAnchorRegions: [
+    {
+      anchorId: "moment-center",
+      region: { x: 0.08, y: 0.42, width: 0.12, height: 0.18 },
+    },
+    {
+      anchorId: "force-line",
+      region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
+    },
+  ],
 };
 
 const twin: TwinRender = {
@@ -56,6 +66,7 @@ const twin: TwinRender = {
       twinAnchorId: "force",
       originalAnchorId: "force",
       label: "applied force",
+      workedStepIds: ["moment"],
     },
   ],
   sourceRefs: [],

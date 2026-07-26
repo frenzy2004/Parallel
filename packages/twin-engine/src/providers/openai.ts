@@ -20,7 +20,7 @@ interface OpenAIProviderOptions {
 }
 
 const PARSER_SYSTEM_PROMPT =
-  "Classify only 2D Statics. Extract an abstract structural signature. Never infer or return the original final answer. Missing or low-confidence context must be explicit. Produce a privacy-safe conceptual Exa query.";
+  "Classify only 2D Statics. Extract an abstract structural signature. Never infer or return the original final answer. Missing or low-confidence context must be explicit. Produce a privacy-safe conceptual Exa query. Locate only the relevant original features as tight normalized 0..1 regions inside the submitted crop. Use these canonical anchor IDs for the matching pattern: concurrent_force_equilibrium=force-intersection; resultant_coplanar_forces=force-system; moment_about_point=moment-center,force-line; rigid_body_equilibrium_2d=pin-support,tension-member; couple_moments=opposite-force-pair; equivalent_distributed_load=distributed-load,load-centroid.";
 
 const COMPILER_SYSTEM_PROMPT =
   "Create a fully worked structural twin with different surface details. Preserve the declared Statics invariant and course convention. Never solve, quote, or include the original final answer. Return strict structured data only.";

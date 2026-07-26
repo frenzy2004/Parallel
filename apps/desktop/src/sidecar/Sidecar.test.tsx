@@ -20,6 +20,16 @@ const recognizedEvent: TwinEvent = {
     missingContext: [],
     confidence: 0.97,
     exaQuery: "introductory statics moment about a point worked example",
+    originalAnchorRegions: [
+      {
+        anchorId: "force",
+        region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
+      },
+      {
+        anchorId: "moment-center",
+        region: { x: 0.08, y: 0.42, width: 0.12, height: 0.18 },
+      },
+    ],
   },
 };
 
@@ -52,6 +62,13 @@ const events: TwinEvent[] = [
           twinAnchorId: "force",
           originalAnchorId: "force",
           label: "applied force",
+          workedStepIds: ["step-1"],
+        },
+        {
+          twinAnchorId: "pin",
+          originalAnchorId: "moment-center",
+          label: "moment center",
+          workedStepIds: ["step-2"],
         },
       ],
       sourceRefs: [],
@@ -87,12 +104,45 @@ describe("Sidecar", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /map/i }));
-    expect(onMap).toHaveBeenLastCalledWith(["force"]);
+    expect(onMap).toHaveBeenLastCalledWith([
+      {
+        anchorId: "force",
+        label: "applied force",
+        region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
+        workedStepIds: ["step-1"],
+      },
+      {
+        anchorId: "moment-center",
+        label: "moment center",
+        region: { x: 0.08, y: 0.42, width: 0.12, height: 0.18 },
+        workedStepIds: ["step-2"],
+      },
+    ]);
 
     fireEvent.mouseLeave(screen.getByText("Take moments about A.").closest("li")!);
     expect(onMap).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: /map/i }));
     expect(onMap).toHaveBeenLastCalledWith([]);
+  });
+
+  it("highlights only the original anchor linked to the hovered step", () => {
+    const onMap = vi.fn();
+    render(
+      <Sidecar events={events} onDismiss={() => undefined} onMap={onMap} />,
+    );
+
+    fireEvent.mouseEnter(
+      screen.getByText("Take moments about A.").closest("li")!,
+    );
+
+    expect(onMap).toHaveBeenLastCalledWith([
+      {
+        anchorId: "force",
+        label: "applied force",
+        region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
+        workedStepIds: ["step-1"],
+      },
+    ]);
   });
 });

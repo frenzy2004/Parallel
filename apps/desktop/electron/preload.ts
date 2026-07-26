@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { MappingHighlight } from "./window-placement.js";
 import type { StructuralSignature } from "@parallel/contracts";
 
 const bridge = {
@@ -7,8 +8,8 @@ const bridge = {
     cropDataUrl: string;
     bounds: { x: number; y: number; width: number; height: number };
   }): Promise<void> => ipcRenderer.invoke("parallel:submit-crop", payload),
-  setMappingHighlights: (anchorIds: string[]): Promise<void> =>
-    ipcRenderer.invoke("parallel:set-mapping-highlights", anchorIds),
+  setMappingHighlights: (highlights: MappingHighlight[]): Promise<void> =>
+    ipcRenderer.invoke("parallel:set-mapping-highlights", highlights),
   dismiss: (): Promise<void> => ipcRenderer.invoke("parallel:dismiss"),
   recordOutcome: (
     outcome: "unlocked" | "wrong_twin" | "another_twin",

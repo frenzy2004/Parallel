@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TwinEvent } from "@parallel/contracts/events";
+import type { NormalizedRegion } from "@parallel/contracts";
+
+export interface MappingHighlight {
+  anchorId: string;
+  label: string;
+  workedStepIds: string[];
+  region: NormalizedRegion;
+}
 
 interface SidecarProps {
   events: TwinEvent[];
   onDismiss(): void;
-  onMap?(anchorIds: string[]): void;
+  onMap?(highlights: MappingHighlight[]): void;
   onOutcome?(outcome: "unlocked" | "wrong_twin" | "another_twin"): void;
 }
 
@@ -39,19 +47,40 @@ export function Sidecar({
   const recognized = events.find((event) => event.state === "recognized");
   const complete = events.findLast((event) => event.state === "complete");
   const streamedSteps = events.filter((event) => event.state === "twin_step");
-  const anchorIds = useMemo(
-    () =>
-      complete?.state === "complete"
-        ? complete.twin.mappingEdges.map((edge) => edge.originalAnchorId)
-        : [],
-    [complete],
+  const highlights = useMemo(
+    () => {
+      if (
+        complete?.state !== "complete" ||
+        recognized?.state !== "recognized"
+      ) {
+        return [];
+      }
+      const regionByAnchor = new Map(
+        recognized.signature.originalAnchorRegions.map((anchor) => [
+          anchor.anchorId,
+          anchor.region,
+        ]),
+      );
+      return complete.twin.mappingEdges.flatMap((edge) => {
+        const region = regionByAnchor.get(edge.originalAnchorId);
+        return region
+          ? [{
+              anchorId: edge.originalAnchorId,
+              label: edge.label,
+              workedStepIds: edge.workedStepIds ?? [],
+              region,
+            }]
+          : [];
+      });
+    },
+    [complete, recognized],
   );
   const toggleMapping = useCallback(() => {
     setMappingVisible((visible) => {
-      onMap(visible ? [] : anchorIds);
+      onMap(visible ? [] : highlights);
       return !visible;
     });
-  }, [anchorIds, onMap]);
+  }, [highlights, onMap]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -94,7 +123,13 @@ export function Sidecar({
           event.state === "twin_step" ? (
             <li
               key={event.step.id}
-              onMouseEnter={() => onMap(anchorIds)}
+              onMouseEnter={() =>
+                onMap(
+                  highlights.filter((highlight) =>
+                    highlight.workedStepIds.includes(event.step.id),
+                  ),
+                )
+              }
               onMouseLeave={() => !mappingVisible && onMap([])}
             >
               <span>{event.step.explanation}</span>

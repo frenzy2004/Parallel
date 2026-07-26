@@ -18,5 +18,5 @@ export interface StaticsPattern {
   allowedMethods: readonly string[];
   generateSurface(seed: number): string;
   generateWorkedSteps(seed: number): WorkedStep[];
-  generateMappingAnchors(): MappingEdge[];
+  generateMappingAnchors(): Array<Omit<MappingEdge, "workedStepIds">>;
 }

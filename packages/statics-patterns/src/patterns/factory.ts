@@ -14,7 +14,7 @@ interface PatternConfig {
   scenarios: readonly string[];
   statement(seed: number, scenario: string, force: number, distance: number): string;
   steps(seed: number, force: number, distance: number): WorkedStep[];
-  anchors: readonly MappingEdge[];
+  anchors: ReadonlyArray<Omit<MappingEdge, "workedStepIds">>;
 }
 
 const boundedValue = (

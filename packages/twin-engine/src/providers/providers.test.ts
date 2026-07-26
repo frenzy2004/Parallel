@@ -24,6 +24,12 @@ const signature: StructuralSignature = {
   missingContext: [],
   confidence: 0.96,
   exaQuery: safeQuery,
+  originalAnchorRegions: [
+    {
+      anchorId: "load",
+      region: { x: 0.68, y: 0.18, width: 0.16, height: 0.5 },
+    },
+  ],
 };
 
 const twin: TwinRender = {
@@ -41,6 +47,7 @@ const twin: TwinRender = {
       twinAnchorId: "load",
       originalAnchorId: "load",
       label: "applied load",
+      workedStepIds: ["moment"],
     },
   ],
   sourceRefs: [],
