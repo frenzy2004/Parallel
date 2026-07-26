@@ -22,4 +22,11 @@ export const getPattern = (patternId: StaticsPatternId): StaticsPattern =>
 export const listPatterns = (): readonly StaticsPattern[] =>
   Object.values(patterns);
 
-export type { NumericBounds, StaticsPattern } from "./types.js";
+export type {
+  CaseQuantity,
+  CaseUnknown,
+  DerivedQuantity,
+  GeneratedStaticsCase,
+  GivenQuantity,
+  StaticsPattern,
+} from "./types.js";
