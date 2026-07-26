@@ -42,3 +42,13 @@ Worktree: `.worktrees/prototype`
 - Added multipart crop validation, in-memory-only byte handling with zeroing in `finally`, ordered SSE events, a rolling 100-fresh-twin budget, abstract precedent matching, outcomes, health, and the versioned Statics course pack.
 - GREEN: `npm test -- apps/api && npm run typecheck && npm run build -w @parallel/api`
   - 5 API tests passed; workspace typecheck and API compilation passed.
+
+## Task 5 — Electron lasso, sidecar, and mapping overlay
+
+- RED: `npm test -- apps/desktop`
+  - Failed as expected because the Sidecar and placement modules did not exist.
+- Added `Alt+Space` global invocation, macOS screen-access gate, explicit capture window, in-memory lasso crop, sidecar/mapping windows, a narrow preload bridge, accessible progressive UI, and keyboard actions `M/N/U/X/Esc`.
+- GREEN: `npm test -- apps/desktop && npm run typecheck && npm run build -w @parallel/desktop`
+  - 8 desktop tests passed; workspace typecheck passed; Vite renderer and Electron main/preload compiled.
+- Runtime probe: `npx electron --version`
+  - Electron `v37.10.3` is available.
