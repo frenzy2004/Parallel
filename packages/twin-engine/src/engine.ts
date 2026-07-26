@@ -37,15 +37,23 @@ export class TwinEngine {
     options: { signal?: AbortSignal; variation?: number } = {},
   ): AsyncGenerator<TwinEvent> {
     const request = TwinRequestSchema.parse(input);
+    let privateCropDataUrl = request.cropDataUrl;
+    request.cropDataUrl = "";
+    input.cropDataUrl = "";
     if (options.signal?.aborted) return;
     yield { state: "reading" };
     try {
-      const recognized = await this.providers.structure.parseStructure(
-        request.cropDataUrl,
-        request.coursePackId,
-        request.attemptContext,
-        options.signal,
-      );
+      let recognized: StructuralSignature;
+      try {
+        recognized = await this.providers.structure.parseStructure(
+          privateCropDataUrl,
+          request.coursePackId,
+          request.attemptContext,
+          options.signal,
+        );
+      } finally {
+        privateCropDataUrl = "";
+      }
       throwIfAborted(options.signal);
       if (recognized.missingContext.includes(UNSUPPORTED_SELECTION_MARKER)) {
         yield {

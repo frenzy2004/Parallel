@@ -30,6 +30,19 @@ export interface ProjectedMappingRect extends Rectangle {
   label: string;
 }
 
+interface CrossSpaceOverlay {
+  setVisibleOnAllWorkspaces(
+    visible: boolean,
+    options: { visibleOnFullScreen: boolean },
+  ): void;
+}
+
+export const keepOverlayVisibleAcrossSpaces = (
+  window: CrossSpaceOverlay,
+): void => {
+  window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+};
+
 const GAP = 16;
 
 const clamp = (value: number, min: number, max: number): number =>

@@ -2,6 +2,14 @@ import { contextBridge, ipcRenderer } from "electron";
 
 const bridge = {
   startCapture: (): Promise<void> => ipcRenderer.invoke("parallel:start-capture"),
+  getCaptureContext: (): Promise<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }> => ipcRenderer.invoke("parallel:get-capture-context"),
+  openScreenSettings: (): Promise<void> =>
+    ipcRenderer.invoke("parallel:open-screen-settings"),
   submitCrop: (payload: {
     cropDataUrl: string;
     bounds: { x: number; y: number; width: number; height: number };

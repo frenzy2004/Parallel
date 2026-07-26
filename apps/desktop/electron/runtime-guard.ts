@@ -6,6 +6,8 @@ export type RendererSource =
   | { kind: "file"; rendererFile: string }
   | { kind: "development"; origin: string };
 
+export type RendererView = "capture" | "import" | "sidecar" | "mapping";
+
 export const resolveRendererSource = (
   configuredUrl: string | undefined,
   rendererFile: string,
@@ -39,17 +41,18 @@ export const resolveRendererSource = (
 export const isTrustedRendererDocumentUrl = (
   candidate: string,
   source: RendererSource,
+  expectedView?: RendererView,
 ): boolean => {
   try {
     const parsed = new URL(candidate);
     if (parsed.hash.length > 0) return false;
     const queryKeys = [...parsed.searchParams.keys()];
+    const view = parsed.searchParams.get("view");
     if (
       queryKeys.length !== 1 ||
       queryKeys[0] !== "view" ||
-      !["capture", "sidecar", "mapping"].includes(
-        parsed.searchParams.get("view") ?? "",
-      )
+      !["capture", "import", "sidecar", "mapping"].includes(view ?? "") ||
+      (expectedView !== undefined && view !== expectedView)
     ) {
       return false;
     }
@@ -69,10 +72,11 @@ export const assertTrustedIpcSender = (
   sender: { senderId: number; senderUrl: string },
   expectedSenderId: number,
   source: RendererSource,
+  expectedView?: RendererView,
 ): void => {
   if (
     sender.senderId !== expectedSenderId ||
-    !isTrustedRendererDocumentUrl(sender.senderUrl, source)
+    !isTrustedRendererDocumentUrl(sender.senderUrl, source, expectedView)
   ) {
     throw new Error("Rejected untrusted IPC sender");
   }

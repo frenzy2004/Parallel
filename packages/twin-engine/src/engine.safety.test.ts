@@ -67,6 +67,36 @@ const collect = async (engine: TwinEngine): Promise<TwinEvent[]> => {
 };
 
 describe("live intelligence safety boundary", () => {
+  it("scrubs the caller's raw crop as soon as streaming takes ownership", async () => {
+    const parseStructure = vi.fn(async () => canonicalMomentSignature);
+    const engine = new TwinEngine({
+      structure: { parseStructure },
+      evidence: { search: async () => [] },
+      compiler: new DemoCompilerProvider(),
+    });
+    const request = {
+      cropDataUrl: cropWithPrivateWork,
+      coursePackId: "statics-2d-v1",
+    };
+    const iterator = engine.stream(request);
+
+    expect(await iterator.next()).toEqual({
+      done: false,
+      value: { state: "reading" },
+    });
+    expect(request.cropDataUrl).toBe("");
+
+    expect((await iterator.next()).value).toMatchObject({
+      state: "recognized",
+    });
+    expect(parseStructure).toHaveBeenCalledWith(
+      cropWithPrivateWork,
+      "statics-2d-v1",
+      undefined,
+      undefined,
+    );
+  });
+
   it("turns the OpenAI classifier result into a canonical signature", async () => {
     const client = {
       responses: {

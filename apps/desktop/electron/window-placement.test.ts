@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   chooseSidecarBounds,
+  keepOverlayVisibleAcrossSpaces,
   projectNormalizedHighlights,
 } from "./window-placement.js";
 
@@ -8,6 +9,16 @@ const display = { x: 0, y: 0, width: 1440, height: 900 };
 const sidecar = { width: 380, height: 520 };
 
 describe("sidecar window placement", () => {
+  it("keeps every overlay visible above macOS full-screen Spaces", () => {
+    const setVisibleOnAllWorkspaces = vi.fn();
+
+    keepOverlayVisibleAcrossSpaces({ setVisibleOnAllWorkspaces });
+
+    expect(setVisibleOnAllWorkspaces).toHaveBeenCalledWith(true, {
+      visibleOnFullScreen: true,
+    });
+  });
+
   it("chooses the right side when it fits", () => {
     expect(
       chooseSidecarBounds(

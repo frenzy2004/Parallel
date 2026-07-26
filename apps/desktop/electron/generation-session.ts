@@ -7,9 +7,9 @@ export class GenerationSession {
   private sequence = 0;
   private controller: AbortController | null = null;
   private activeLease: GenerationLease | null = null;
-  private cropDataUrl: string | null = null;
+  private privateInput: string | null = null;
 
-  begin(cropDataUrl: string): GenerationLease {
+  begin(privateInput?: string): GenerationLease {
     this.invalidate();
     const controller = new AbortController();
     const lease = {
@@ -18,7 +18,7 @@ export class GenerationSession {
     };
     this.controller = controller;
     this.activeLease = lease;
-    this.cropDataUrl = cropDataUrl;
+    this.privateInput = privateInput ?? null;
     return lease;
   }
 
@@ -26,15 +26,21 @@ export class GenerationSession {
     this.controller?.abort();
     this.controller = null;
     this.activeLease = null;
-    this.cropDataUrl = null;
+    this.privateInput = null;
   }
 
   canDeliver(lease: GenerationLease): boolean {
     return this.activeLease === lease && !lease.signal.aborted;
   }
 
-  cropForRegeneration(): string | null {
-    return this.cropDataUrl;
+  releasePrivateInput(lease: GenerationLease): void {
+    if (this.activeLease === lease) {
+      this.privateInput = null;
+    }
+  }
+
+  hasPrivateInput(): boolean {
+    return this.privateInput !== null;
   }
 }
 
@@ -61,17 +67,10 @@ export interface RecoveryNotice {
   canOpenSettings: boolean;
 }
 
-export const recoveryForScreenAccess = (
-  status: string,
-): RecoveryNotice | null =>
-  status === "granted"
-    ? null
-    : {
-        title: "Screen Recording needed",
-        detail:
-          "Allow PARALLEL in System Settings → Privacy & Security → Screen Recording, then try Option+Space again.",
-        canOpenSettings: true,
-      };
+export type CaptureMode = "lasso" | "import";
+
+export const captureModeForScreenAccess = (status: string): CaptureMode =>
+  status === "granted" ? "lasso" : "import";
 
 export const runGuarded = async <T>(
   task: () => T | Promise<T>,

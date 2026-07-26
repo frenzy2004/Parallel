@@ -1,35 +1,57 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  captureModeForScreenAccess,
   GenerationSession,
   dismissOverlayState,
-  recoveryForScreenAccess,
   runGuarded,
 } from "./generation-session.js";
 
 const crop = "data:image/png;base64,aGVsbG8=";
 
 describe("generation lifecycle", () => {
-  it("invalidates an in-flight generation and clears its crop on dismissal", () => {
+  it("releases private input without invalidating the active generation", () => {
     const session = new GenerationSession();
     const lease = session.begin(crop);
     expect(session.canDeliver(lease)).toBe(true);
-    expect(session.cropForRegeneration()).toBe(crop);
+    expect(session.hasPrivateInput()).toBe(true);
+
+    session.releasePrivateInput(lease);
+
+    expect(session.hasPrivateInput()).toBe(false);
+    expect(session.canDeliver(lease)).toBe(true);
+    expect(lease.signal.aborted).toBe(false);
+  });
+
+  it("invalidates an in-flight generation and clears its private input", () => {
+    const session = new GenerationSession();
+    const lease = session.begin(crop);
 
     session.invalidate();
 
     expect(lease.signal.aborted).toBe(true);
     expect(session.canDeliver(lease)).toBe(false);
-    expect(session.cropForRegeneration()).toBeNull();
+    expect(session.hasPrivateInput()).toBe(false);
   });
 
-  it("prevents the previous generation from delivering after regeneration", () => {
+  it("prevents a stale lease from clearing a newer generation's input", () => {
     const session = new GenerationSession();
     const first = session.begin(crop);
-    const second = session.begin(crop);
+    const second = session.begin(`${crop}new`);
+
+    session.releasePrivateInput(first);
 
     expect(first.signal.aborted).toBe(true);
     expect(session.canDeliver(first)).toBe(false);
     expect(session.canDeliver(second)).toBe(true);
+    expect(session.hasPrivateInput()).toBe(true);
+  });
+
+  it("starts abstract regeneration without retaining any screenshot", () => {
+    const session = new GenerationSession();
+    const lease = session.begin();
+
+    expect(session.canDeliver(lease)).toBe(true);
+    expect(session.hasPrivateInput()).toBe(false);
   });
 
   it("closes every live overlay window while invalidating private state", () => {
@@ -45,24 +67,21 @@ describe("generation lifecycle", () => {
     expect(second.close).toHaveBeenCalledOnce();
     expect(alreadyClosed.close).not.toHaveBeenCalled();
     expect(session.canDeliver(lease)).toBe(false);
-    expect(session.cropForRegeneration()).toBeNull();
+    expect(session.hasPrivateInput()).toBe(false);
   });
 });
 
 describe("recoverable desktop failures", () => {
+  it("uses instant lasso only when Screen Recording is granted", () => {
+    expect(captureModeForScreenAccess("granted")).toBe("lasso");
+  });
+
   it.each(["denied", "restricted", "not-determined", "unknown"])(
-    "requires visible recovery for Screen Recording status %s",
+    "uses private screenshot import for Screen Recording status %s",
     (status) => {
-      expect(recoveryForScreenAccess(status)).toMatchObject({
-        title: "Screen Recording needed",
-        canOpenSettings: true,
-      });
+      expect(captureModeForScreenAccess(status)).toBe("import");
     },
   );
-
-  it("needs no recovery after Screen Recording is granted", () => {
-    expect(recoveryForScreenAccess("granted")).toBeNull();
-  });
 
   it("turns rejected async work into a handled recovery path", async () => {
     const onFailure = vi.fn();
