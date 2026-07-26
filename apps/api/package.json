@@ -1,0 +1,17 @@
+{
+  "name": "@parallel/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/app.ts",
+  "scripts": {
+    "test": "vitest run src",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@parallel/contracts": "0.1.0",
+    "@parallel/twin-engine": "0.1.0",
+    "hono": "^4.8.12"
+  }
+}

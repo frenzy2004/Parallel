@@ -34,3 +34,11 @@ Worktree: `.worktrees/prototype`
 - Added abstract-query-only Exa search, teaching-domain result filtering, and deterministic no-key providers.
 - GREEN: `npm test -- packages/twin-engine && npm run typecheck`
   - 4 provider/engine tests passed without network or credentials; workspace typecheck passed.
+
+## Task 4 — Streaming local API and event budgets
+
+- RED: `npm test -- apps/api/src/app.test.ts`
+  - Failed as expected because `./app.js` did not exist.
+- Added multipart crop validation, in-memory-only byte handling with zeroing in `finally`, ordered SSE events, a rolling 100-fresh-twin budget, abstract precedent matching, outcomes, health, and the versioned Statics course pack.
+- GREEN: `npm test -- apps/api && npm run typecheck && npm run build -w @parallel/api`
+  - 5 API tests passed; workspace typecheck and API compilation passed.
