@@ -70,8 +70,9 @@ describe("live intelligence safety boundary", () => {
   it("turns the OpenAI classifier result into a canonical signature", async () => {
     const client = {
       responses: {
-        parse: vi.fn(async () => ({
+        parse: vi.fn(async (_request: unknown) => ({
           output_parsed: {
+            disposition: "supported",
             patternId: "moment_about_point",
             confidence: 0.96,
             hasSufficientContext: true,
@@ -91,6 +92,8 @@ describe("live intelligence safety boundary", () => {
 
     expect(recognized).toEqual(canonicalMomentSignature);
     expect(JSON.stringify(recognized)).not.toContain(privateText);
+    const request = client.responses.parse.mock.calls[0]?.[0];
+    expect(JSON.stringify(request)).not.toContain(privateText);
   });
 
   it("canonicalizes recognized structure before emitting it or querying Exa", async () => {
@@ -154,6 +157,83 @@ describe("live intelligence safety boundary", () => {
       },
     ]);
     expect(JSON.stringify(events)).not.toContain(privateText);
+  });
+
+  it.each([
+    {
+      marker: "__parallel_unsupported_selection__",
+      reason: "PARALLEL supports complete 2D Statics problems only.",
+    },
+    {
+      marker: "__parallel_active_assessment__",
+      reason: "PARALLEL is unavailable on active assessments.",
+    },
+  ])("refuses $marker before evidence search or compilation", async ({
+    marker,
+    reason,
+  }) => {
+    const search = vi.fn(async () => []);
+    const compileTwin = vi.fn();
+    const engine = new TwinEngine({
+      structure: {
+        parseStructure: async () => ({
+          ...canonicalMomentSignature,
+          missingContext: [marker],
+        }),
+      },
+      evidence: { search },
+      compiler: { compileTwin },
+    });
+
+    const events = await collect(engine);
+
+    expect(events).toEqual([
+      { state: "reading" },
+      { state: "unsupported", reason },
+    ]);
+    expect(search).not.toHaveBeenCalled();
+    expect(compileTwin).not.toHaveBeenCalled();
+  });
+
+  it("aborts recognition on dismissal without emitting a late error", async () => {
+    const controller = new AbortController();
+    const search = vi.fn(async () => []);
+    const engine = new TwinEngine({
+      structure: {
+        parseStructure: (
+          _cropDataUrl,
+          _coursePackId,
+          _attemptContext,
+          signal,
+        ) =>
+          new Promise<StructuralSignature>((_resolve, reject) => {
+            signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+      },
+      evidence: { search },
+      compiler: new DemoCompilerProvider(),
+    });
+    const iterator = engine.stream(
+      {
+        cropDataUrl: cropWithPrivateWork,
+        coursePackId: "statics-2d-v1",
+      },
+      { signal: controller.signal },
+    );
+
+    expect(await iterator.next()).toEqual({
+      done: false,
+      value: { state: "reading" },
+    });
+    const pending = iterator.next();
+    controller.abort();
+
+    expect(await pending).toEqual({ done: true, value: undefined });
+    expect(search).not.toHaveBeenCalled();
   });
 
   it("rejects a schema-valid compiler result that tries to reveal an answer", async () => {

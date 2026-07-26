@@ -134,12 +134,15 @@ describe("provider privacy boundaries", () => {
 
   it("uses classifier-only image input, a strict format, low reasoning, and no storage", async () => {
     const calls: unknown[] = [];
+    const requestOptions: unknown[] = [];
     const client = {
       responses: {
-        parse: vi.fn(async (request: unknown) => {
+        parse: vi.fn(async (request: unknown, options?: unknown) => {
           calls.push(request);
+          requestOptions.push(options);
           return {
             output_parsed: {
+              disposition: "supported",
               patternId: "moment_about_point",
               confidence: 0.96,
               hasSufficientContext: true,
@@ -150,8 +153,14 @@ describe("provider privacy boundaries", () => {
       },
     };
     const provider = new OpenAITwinProvider(client);
+    const controller = new AbortController();
 
-    await provider.parseStructure(secretCrop, "statics-2d-v1");
+    await provider.parseStructure(
+      secretCrop,
+      "statics-2d-v1",
+      undefined,
+      controller.signal,
+    );
 
     const recognition = calls[0] as Record<string, unknown>;
     const input = recognition.input as Array<Record<string, unknown>>;
@@ -161,13 +170,47 @@ describe("provider privacy boundaries", () => {
       store: false,
       reasoning: { effort: "low" },
     });
-    expect(content[1]).toEqual({
+    expect(content).toEqual([{
       type: "input_image",
       image_url: secretCrop,
       detail: "auto",
-    });
+    }]);
     expect((recognition.text as { format?: unknown }).format).toBeDefined();
+    expect(requestOptions).toEqual([{ signal: controller.signal }]);
     expect(calls).toHaveLength(1);
+  });
+
+  it("marks non-Statics and active-assessment classifications for a generic refusal", async () => {
+    const makeProvider = (disposition: "unsupported" | "active_assessment") =>
+      new OpenAITwinProvider({
+        responses: {
+          parse: vi.fn(async () => ({
+            output_parsed: {
+              disposition,
+              patternId: "moment_about_point",
+              confidence: 0,
+              hasSufficientContext: false,
+              originalAnchorRegions: [],
+            },
+          })),
+        },
+      });
+
+    const unsupported = await makeProvider("unsupported").parseStructure(
+      secretCrop,
+      "statics-2d-v1",
+    );
+    const assessment = await makeProvider("active_assessment").parseStructure(
+      secretCrop,
+      "statics-2d-v1",
+    );
+
+    expect(unsupported.missingContext).toEqual([
+      "__parallel_unsupported_selection__",
+    ]);
+    expect(assessment.missingContext).toEqual([
+      "__parallel_active_assessment__",
+    ]);
   });
 
   it("streams a deterministic no-key demo without network access", async () => {

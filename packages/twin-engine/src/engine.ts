@@ -17,20 +17,44 @@ import {
   OpenAITwinProvider,
   type ResponsesClient,
 } from "./providers/openai.js";
-import type { TwinProviders } from "./providers/types.js";
+import {
+  ACTIVE_ASSESSMENT_MARKER,
+  UNSUPPORTED_SELECTION_MARKER,
+  type TwinProviders,
+} from "./providers/types.js";
 
 export class TwinEngine {
   constructor(private readonly providers: TwinProviders) {}
 
-  async *stream(input: TwinRequest): AsyncGenerator<TwinEvent> {
+  async *stream(
+    input: TwinRequest,
+    options: { signal?: AbortSignal } = {},
+  ): AsyncGenerator<TwinEvent> {
     const request = TwinRequestSchema.parse(input);
+    if (options.signal?.aborted) return;
     yield { state: "reading" };
     try {
       const recognized = await this.providers.structure.parseStructure(
         request.cropDataUrl,
         request.coursePackId,
         request.attemptContext,
+        options.signal,
       );
+      throwIfAborted(options.signal);
+      if (recognized.missingContext.includes(UNSUPPORTED_SELECTION_MARKER)) {
+        yield {
+          state: "unsupported",
+          reason: "PARALLEL supports complete 2D Statics problems only.",
+        };
+        return;
+      }
+      if (recognized.missingContext.includes(ACTIVE_ASSESSMENT_MARKER)) {
+        yield {
+          state: "unsupported",
+          reason: "PARALLEL is unavailable on active assessments.",
+        };
+        return;
+      }
       if (recognized.missingContext.length > 0 || recognized.confidence < 0.8) {
         yield {
           state: "recapture",
@@ -47,7 +71,9 @@ export class TwinEngine {
       };
       const evidence = await this.providers.evidence.search({
         query: signature.exaQuery,
+        ...(options.signal ? { signal: options.signal } : {}),
       });
+      throwIfAborted(options.signal);
       const seed = stableSeed(signature.patternId);
       const compiledTwin = TwinRenderSchema.parse(
         await this.providers.compiler.compileTwin(
@@ -57,6 +83,7 @@ export class TwinEngine {
         ),
       );
       const verifiedTwin = compileVerifiedTwin(signature, seed);
+      throwIfAborted(options.signal);
       if (!matchesVerifiedTwin(compiledTwin, verifiedTwin)) {
         throw new Error("Compiled twin failed the structural safety gate");
       }
@@ -69,6 +96,7 @@ export class TwinEngine {
       }
       yield { state: "complete", twin };
     } catch (error) {
+      if (options.signal?.aborted || isAbortError(error)) return;
       yield {
         state: "error",
         message: error instanceof Error ? error.message : "Twin generation failed",
@@ -96,7 +124,8 @@ export const createTwinEngineFromEnv = (
   const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
   const client: ResponsesClient = {
     responses: {
-      parse: (request) => openai.responses.parse(request as never),
+      parse: (request, options) =>
+        openai.responses.parse(request as never, options),
     },
   };
   const openaiProvider = new OpenAITwinProvider(client, {
@@ -138,5 +167,15 @@ const matchesVerifiedTwin = (
 ): boolean =>
   JSON.stringify({ ...candidate, sourceRefs: [] }) ===
   JSON.stringify({ ...verified, sourceRefs: [] });
+
+const throwIfAborted = (signal: AbortSignal | undefined): void => {
+  if (!signal?.aborted) return;
+  throw signal.reason instanceof Error
+    ? signal.reason
+    : new DOMException("Aborted", "AbortError");
+};
+
+const isAbortError = (error: unknown): boolean =>
+  error instanceof Error && error.name === "AbortError";
 
 export type { TwinProviders } from "./providers/types.js";

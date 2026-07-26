@@ -23,7 +23,10 @@ export class ExaEvidenceProvider implements EvidenceProvider {
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 
-  async search(request: { query: string }): Promise<SourceRef[]> {
+  async search(request: {
+    query: string;
+    signal?: AbortSignal;
+  }): Promise<SourceRef[]> {
     if (!isCanonicalExaQuery(request.query)) {
       throw new Error("Exa query is not an allowlisted canonical query");
     }
@@ -40,6 +43,7 @@ export class ExaEvidenceProvider implements EvidenceProvider {
         includeDomains: INCLUDED_DOMAINS,
         contents: { highlights: true },
       }),
+      ...(request.signal ? { signal: request.signal } : {}),
     });
     if (!response.ok) {
       throw new Error(`Exa search failed with ${response.status}`);

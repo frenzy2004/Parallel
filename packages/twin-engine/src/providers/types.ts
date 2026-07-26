@@ -4,16 +4,22 @@ import type {
   TwinRender,
 } from "@parallel/contracts";
 
+export const UNSUPPORTED_SELECTION_MARKER =
+  "__parallel_unsupported_selection__";
+export const ACTIVE_ASSESSMENT_MARKER =
+  "__parallel_active_assessment__";
+
 export interface StructureProvider {
   parseStructure(
     cropDataUrl: string,
     coursePackId: string,
     attemptContext?: string,
+    signal?: AbortSignal,
   ): Promise<StructuralSignature>;
 }
 
 export interface EvidenceProvider {
-  search(request: { query: string }): Promise<SourceRef[]>;
+  search(request: { query: string; signal?: AbortSignal }): Promise<SourceRef[]>;
 }
 
 export interface CompilerProvider {

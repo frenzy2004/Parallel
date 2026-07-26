@@ -39,13 +39,16 @@ export const createTwinRoutes = (
     let cropDataUrl = `data:${crop.type};base64,${Buffer.from(cropBytes).toString("base64")}`;
     return streamSSE(context, async (stream) => {
       try {
-        for await (const event of engine.stream({
-          cropDataUrl,
-          coursePackId,
-          ...(typeof attemptContext === "string" && attemptContext.length > 0
-            ? { attemptContext }
-            : {}),
-        })) {
+        for await (const event of engine.stream(
+          {
+            cropDataUrl,
+            coursePackId,
+            ...(typeof attemptContext === "string" && attemptContext.length > 0
+              ? { attemptContext }
+              : {}),
+          },
+          { signal: context.req.raw.signal },
+        )) {
           await stream.writeSSE({
             event: event.state,
             data: JSON.stringify(event),

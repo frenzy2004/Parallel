@@ -291,10 +291,13 @@ const runTwinGeneration = async (
 ): Promise<void> => {
   cancelActiveIterator();
   const lease = generation.begin(cropDataUrl);
-  const iterator = createTwinEngineFromEnv(process.env).stream({
-    cropDataUrl,
-    coursePackId: "statics-2d-v1",
-  });
+  const iterator = createTwinEngineFromEnv(process.env).stream(
+    {
+      cropDataUrl,
+      coursePackId: "statics-2d-v1",
+    },
+    { signal: lease.signal },
+  );
   activeIterator = iterator;
   try {
     for await (const event of iterator) {
