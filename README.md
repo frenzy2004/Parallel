@@ -24,8 +24,10 @@ npm run demo
 ```
 
 The command builds the renderer and Electron processes, opens the bundled
-Statics fixture, then starts PARALLEL. Press `Option+Space`, lasso the complete
-problem and diagram, and follow the sidecar. Demo mode uses no network.
+Statics fixture, then starts PARALLEL in an explicit fixed-fixture mode. Press
+`Option+Space`, lasso the complete problem and diagram, and follow the sidecar.
+Demo mode uses no network and cannot silently become a solver for arbitrary
+screens. Outside this command, a missing live recognition provider fails closed.
 
 Keyboard controls:
 

@@ -10,6 +10,7 @@ import { canonicalizeSignature } from "./canonical-patterns.js";
 import {
   DemoEvidenceProvider,
   DemoStructureProvider,
+  UnavailableStructureProvider,
   VerifiedCompilerProvider,
 } from "./providers/demo.js";
 import { ExaEvidenceProvider } from "./providers/exa.js";
@@ -19,6 +20,7 @@ import {
 } from "./providers/openai.js";
 import {
   ACTIVE_ASSESSMENT_MARKER,
+  PROVIDER_UNAVAILABLE_MARKER,
   UNSUPPORTED_SELECTION_MARKER,
   type TwinProviders,
 } from "./providers/types.js";
@@ -45,6 +47,14 @@ export class TwinEngine {
         yield {
           state: "unsupported",
           reason: "PARALLEL supports complete 2D Statics problems only.",
+        };
+        return;
+      }
+      if (recognized.missingContext.includes(PROVIDER_UNAVAILABLE_MARKER)) {
+        yield {
+          state: "unsupported",
+          reason:
+            "Live recognition is off. Use the bundled demo or configure the provider.",
         };
         return;
       }
@@ -109,7 +119,10 @@ export const createTwinEngineFromEnv = (
   env: Record<string, string | undefined> = process.env,
   fetchImpl: typeof fetch = fetch,
 ): TwinEngine => {
-  const demoStructure = new DemoStructureProvider();
+  const demoStructure =
+    env.PARALLEL_DEMO_MODE === "1"
+      ? new DemoStructureProvider()
+      : new UnavailableStructureProvider();
   const demoEvidence = new DemoEvidenceProvider();
   const verifiedCompiler = new VerifiedCompilerProvider();
 

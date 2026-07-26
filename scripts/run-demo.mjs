@@ -16,6 +16,9 @@ opened.unref();
 const electron = spawn(
   resolve("node_modules/.bin/electron"),
   [resolve("apps/desktop")],
-  { stdio: "inherit" },
+  {
+    stdio: "inherit",
+    env: { ...process.env, PARALLEL_DEMO_MODE: "1" },
+  },
 );
 electron.on("exit", (code) => process.exit(code ?? 0));

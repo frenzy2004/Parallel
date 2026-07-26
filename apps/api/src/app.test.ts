@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { createTwinEngineFromEnv } from "@parallel/twin-engine";
 import { createApp } from "./app.js";
 import { RollingTwinBudget } from "./budget.js";
+
+const createDemoApp = (budget?: RollingTwinBudget) =>
+  createApp({
+    engine: createTwinEngineFromEnv({ PARALLEL_DEMO_MODE: "1" }),
+    ...(budget ? { budget } : {}),
+  });
 
 const makeForm = (
   type = "image/png",
@@ -14,7 +21,7 @@ const makeForm = (
 
 describe("local twin API", () => {
   it("rejects unsupported crop MIME types", async () => {
-    const response = await createApp().request("/v1/twins", {
+    const response = await createDemoApp().request("/v1/twins", {
       method: "POST",
       body: makeForm("image/svg+xml"),
     });
@@ -34,7 +41,7 @@ describe("local twin API", () => {
   });
 
   it("streams ordered states without an original answer field", async () => {
-    const response = await createApp().request("/v1/twins", {
+    const response = await createDemoApp().request("/v1/twins", {
       method: "POST",
       body: makeForm(),
     });
@@ -58,7 +65,7 @@ describe("local twin API", () => {
 
   it("enforces 100 fresh twins but does not charge precedent reopens", async () => {
     const budget = new RollingTwinBudget(1);
-    const app = createApp({ budget });
+    const app = createDemoApp(budget);
 
     const first = await app.request("/v1/twins", {
       method: "POST",

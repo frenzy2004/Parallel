@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { createApp } from "@parallel/api";
+import { createTwinEngineFromEnv } from "@parallel/twin-engine";
 import { ExaEvidenceProvider } from "@parallel/twin-engine/providers/exa";
 import { PrecedentStore } from "../apps/desktop/electron/precedents.ts";
 
@@ -14,7 +15,9 @@ form.set(
   new File([cropBytes.buffer], "crop.png", { type: "image/png" }),
 );
 form.set("coursePackId", "statics-2d-v1");
-const response = await createApp().request("/v1/twins", {
+const response = await createApp({
+  engine: createTwinEngineFromEnv({ PARALLEL_DEMO_MODE: "1" }),
+}).request("/v1/twins", {
   method: "POST",
   body: form,
 });

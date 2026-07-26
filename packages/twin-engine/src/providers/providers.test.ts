@@ -214,7 +214,7 @@ describe("provider privacy boundaries", () => {
   });
 
   it("streams a deterministic no-key demo without network access", async () => {
-    const engine = createTwinEngineFromEnv({});
+    const engine = createTwinEngineFromEnv({ PARALLEL_DEMO_MODE: "1" });
     const events: TwinEvent[] = [];
     for await (const event of engine.stream({
       cropDataUrl: secretCrop,
@@ -231,6 +231,25 @@ describe("provider privacy boundaries", () => {
       "complete",
     ]);
     expect(events.at(-1)).not.toHaveProperty("originalAnswer");
+  });
+
+  it("refuses arbitrary no-key captures outside the explicit bundled demo", async () => {
+    const events: TwinEvent[] = [];
+    for await (const event of createTwinEngineFromEnv({}).stream({
+      cropDataUrl: secretCrop,
+      coursePackId: "statics-2d-v1",
+    })) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([
+      { state: "reading" },
+      {
+        state: "unsupported",
+        reason:
+          "Live recognition is off. Use the bundled demo or configure the provider.",
+      },
+    ]);
   });
 
   it.each([

@@ -15,7 +15,9 @@ describe("bundled no-key demo journey", () => {
     expect(fixture).not.toContain("OPENAI_API_KEY");
 
     const events: TwinEvent[] = [];
-    for await (const event of createTwinEngineFromEnv({}).stream({
+    for await (const event of createTwinEngineFromEnv({
+      PARALLEL_DEMO_MODE: "1",
+    }).stream({
       cropDataUrl: "data:image/png;base64,ZGVtby1jcm9w",
       coursePackId: "statics-2d-v1",
     })) {

@@ -11,6 +11,7 @@ import type {
   EvidenceProvider,
   StructureProvider,
 } from "./types.js";
+import { PROVIDER_UNAVAILABLE_MARKER } from "./types.js";
 
 export class DemoStructureProvider implements StructureProvider {
   async parseStructure(): Promise<StructuralSignature> {
@@ -38,6 +39,19 @@ export class DemoStructureProvider implements StructureProvider {
         },
       ],
     });
+  }
+}
+
+export class UnavailableStructureProvider
+  extends DemoStructureProvider
+  implements StructureProvider
+{
+  override async parseStructure(): Promise<StructuralSignature> {
+    const signature = await super.parseStructure();
+    return {
+      ...signature,
+      missingContext: [PROVIDER_UNAVAILABLE_MARKER],
+    };
   }
 }
 
