@@ -98,6 +98,8 @@ OPENAI_API_KEY=... EXA_API_KEY=... pnpm smoke:live
 ## Deploy to Vercel
 
 The linked Vercel project uses `apps/web` as its application root.
+The verified production release is available at
+`https://web-sandy-seven-10.vercel.app`.
 
 ```bash
 pnpm dlx vercel@57.0.0 deploy --prod --cwd apps/web
